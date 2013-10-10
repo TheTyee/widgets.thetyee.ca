@@ -1,0 +1,175 @@
+#!/usr/bin/env perl
+use Mojolicious::Lite;
+use Mojo::UserAgent;
+use Data::Dumper;
+use Try::Tiny;
+use DateTime;
+use DateTime::Format::DateParse;
+use Number::Format qw(:subs);
+use Widget::Schema;
+use DBIx::Class::ResultClass::HashRefInflator;
+
+my $config = plugin 'JSONConfig';
+plugin JSONP => callback => 'cb';
+
+helper schema => sub {
+    my $schema = Widget::Schema->connect( $config->{'pg_dsn'},
+        $config->{'pg_user'}, $config->{'pg_pass'}, );
+    return $schema;
+};
+
+helper search_transactions => sub {
+    my $self   = shift;
+    my $search = shift;
+    my $schema = $self->schema;
+    my $rs     = $schema->resultset( 'Transaction' )->search( $search );
+    return $rs;
+};
+
+get '/' => sub {
+    my $self = shift;
+    $self->render( 'index' );
+};
+
+# Provide a data structure for following progress on fundraising campaigns
+get '/progress' => sub {
+    my $self       = shift;
+    my $campaign   = $self->param( 'campaign' );
+    my $date_start = $self->param( 'date_start' );
+    my $date_end   = $self->param( 'date_end' );
+    my $goal       = $self->param( 'goal' );
+
+    # Need some better error checking for required params
+    unless ( $date_start && $date_end && $goal ) {
+        $self->render_not_found;
+        return;
+    }
+
+    # Dates
+    my $dt_start = DateTime::Format::DateParse->parse_datetime( $date_start );
+    my $dt_end   = DateTime::Format::DateParse->parse_datetime( $date_end );
+    $dt_end->set_time_zone( 'America/Los_Angeles' );
+    my $today = DateTime->now( time_zone => 'America/Los_Angeles' );
+    my $duration = $dt_end->subtract_datetime( $today );
+    my ( $days, $hours, $minutes )
+        = $duration->in_units( 'days', 'hours', 'minutes' );
+    my $dtf = $self->schema->storage->datetime_parser;
+
+    # Transactions and calculations
+    my $rs  = $self->search_transactions(
+        { trans_date => { '>' => $dtf->format_datetime( $dt_start ) }, } );
+    my $count = $rs->count;
+    my $total = $rs->get_column( 'amount_in_cents' )->func( 'SUM' ) / 100;
+    my $percentage = round( $total / $goal * 100, 0 );
+    my $remaining  = $goal - $total;
+
+    # Contributors
+    my @contributors;
+    while ( my $contributor = $rs->next ) {
+        # only non-anon
+        next
+            unless ( $contributor->pref_anonymous
+            && $contributor->pref_anonymous eq 'Yes' );
+        my $contrib = {
+            name  => $contributor->first_name . ' ' . $contributor->last_name,
+            city  => $contributor->city,
+            state => $contributor->state,
+        };
+        push @contributors, $contrib;
+    }
+    @contributors = reverse @contributors;
+
+    # News priorities
+    my $priority_map = {
+        1 => 'Arts & Culture',
+        2 => 'Energy & Environment',
+        3 => 'Trade & Foreign Policy',
+        4 => 'Labour, Industry & Economy',
+        5 => 'Government Accountability',
+        6 => 'Inequality, Class & Social Security',
+        7 => 'Rights & Justice',
+        8 => 'Open Media',
+        0 => 'Tyee\'s Choice',
+    };
+
+    # Count distinct non-null values from pref_newspriorities
+    my @priorities = $rs->search(
+        { pref_newspriority => { '!=' => undef } },
+        {   select =>
+                [ 'pref_newspriority', { count => 'pref_newspriority' } ],
+            as           => [qw/ pref_newspriority count /],
+            group_by     => [qw/ pref_newspriority /],
+            order_by     => { -desc => 'count' },
+            result_class => 'DBIx::Class::ResultClass::HashRefInflator',
+        }
+    );
+
+    # Provide the vote count with priority names
+    my @votes;
+    foreach my $priority ( @priorities ) {
+        my $vote = {
+            count => $priority->{'count'},
+            name  => $priority_map->{ $priority->{'pref_newspriority'} },
+        };
+        push @votes, $vote;
+    }
+
+    # Data structure to return to requests
+    my $progress = {
+        campaign             => $campaign,
+        date_start           => $dt_start->datetime(),
+        date_start_formatted => $dt_start->month_name . ' '
+            . $dt_start->day . ', '
+            . $dt_start->year,
+        date_end           => $dt_end->datetime(),
+        date_end_formatted => $dt_end->month_name . ' '
+            . $dt_end->day . ', '
+            . $dt_end->year,
+        left_days        => $days,
+        left_mins        => $minutes,
+        left_hours       => $hours,
+        goal             => $goal,
+        goal_formatted   => format_price( $goal, 2, '$' ),
+        raised           => $total,
+        raised_formatted => format_price( $total, 2, '$' ),
+        people           => $count,
+        percentage       => $percentage,
+        remaining        => format_price( $remaining, 2, '$' ),
+        contributors     => \@contributors,
+        votes            => \@votes,
+    };
+    $self->stash(
+        progress   => $progress,
+    );
+    $self->respond_to(
+        json => sub { $self->render_jsonp( { result => $progress } ); },
+        html => { template => 'progress' },
+        any  => { text     => '', status => 204 }
+    );
+} => 'progress';
+
+app->secret( $config->{'app_secret'} );
+app->start;
+
+__DATA__
+
+@@ index.html.ep
+% layout 'default';
+% title 'widgets.thetyee.ca';
+
+@@ progress.html.ep
+% layout 'default';
+% title 'HTML output for testing';
+<pre>
+%= dumper ( $progress );
+</pre>
+
+@@ layouts/default.html.ep
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="shortcut icon" href="<%= $config->{'static_asset_path'} %>/ui/img/favicon.ico">
+<title><%= title %></title>
+</head>
+<body><%= content %></body>
+</html>
