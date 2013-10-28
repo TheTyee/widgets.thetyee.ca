@@ -60,31 +60,27 @@ get '/progress' => sub {
     my $count = $rs->count;
     # Need to multiply those rows with a value in plan_code by 12 months
     my $total;
+    my @contributors;
     while ( my $trans = $rs->next ) {
         if ( $trans->plan_code ) {
             $total += $trans->amount_in_cents / 100 * 12;
         } else {
             $total += $trans->amount_in_cents / 100;
         }
-    }
-    my $percentage = round( $total / $goal * 100, 0 );
-    my $remaining  = $goal - $total;
-
-    # Contributors
-    my @contributors;
-    while ( my $contributor = $rs->next ) {
-        # only non-anon
+        # only non-anon contribs
         next
-            unless ( $contributor->pref_anonymous
-            && $contributor->pref_anonymous eq 'Yes' );
+            unless ( $trans->pref_anonymous
+            && $trans->pref_anonymous eq 'Yes' );
         my $contrib = {
-            name  => $contributor->first_name . ' ' . $contributor->last_name,
-            city  => $contributor->city,
-            state => $contributor->state,
+            name  => $trans->first_name . ' ' . $trans->last_name,
+            city  => $trans->city,
+            state => $trans->state,
         };
         push @contributors, $contrib;
     }
     @contributors = reverse @contributors;
+    my $percentage = round( $total / $goal * 100, 0 );
+    my $remaining  = $goal - $total;
 
     # News priorities
     my $priority_map = {
