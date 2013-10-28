@@ -142,6 +142,7 @@ get '/progress' => sub {
         remaining        => format_price( $remaining, 0, '$' ),
         contributors     => \@contributors,
         votes            => \@votes,
+        version          => $config->{'app_version'},
     };
     $self->stash(
         progress   => $progress,
