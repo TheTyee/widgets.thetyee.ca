@@ -54,12 +54,19 @@ get '/progress' => sub {
     my ( $days, $hours, $minutes )
         = $duration->in_units( 'days', 'hours', 'minutes' );
     my $dtf = $self->schema->storage->datetime_parser;
-
     # Transactions and calculations
     my $rs  = $self->search_transactions(
         { trans_date => { '>' => $dtf->format_datetime( $dt_start ) }, } );
     my $count = $rs->count;
-    my $total = $rs->get_column( 'amount_in_cents' )->func( 'SUM' ) / 100;
+    # Need to multiply those rows with a value in plan_code by 12 months
+    my $total;
+    while ( my $trans = $rs->next ) {
+        if ( $trans->plan_code ) {
+            $total += $trans->amount_in_cents / 100 * 12;
+        } else {
+            $total += $trans->amount_in_cents / 100;
+        }
+    }
     my $percentage = round( $total / $goal * 100, 0 );
     my $remaining  = $goal - $total;
 
@@ -113,6 +120,8 @@ get '/progress' => sub {
         };
         push @votes, $vote;
     }
+    # Only the top-three votes
+    @votes = @votes[0..2];
 
     # Data structure to return to requests
     my $progress = {
