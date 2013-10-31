@@ -5,12 +5,16 @@ use Data::Dumper;
 use Try::Tiny;
 use DateTime;
 use DateTime::Format::DateParse;
-use Number::Format qw(:subs);
+use Number::Format;
 use Widget::Schema;
 use DBIx::Class::ResultClass::HashRefInflator;
 
 my $config = plugin 'JSONConfig';
 plugin JSONP => callback => 'cb';
+
+my $formatter = new Number::Format(-thousands_sep   => ',',
+                            -decimal_point   => '.',
+                            );
 
 helper schema => sub {
     my $schema = Widget::Schema->connect( $config->{'pg_dsn'},
@@ -79,7 +83,7 @@ get '/progress' => sub {
         push @contributors, $contrib;
     }
     @contributors = reverse @contributors;
-    my $percentage = round( $total / $goal * 100, 0 );
+    my $percentage = $formatter->round( $total / $goal * 100, 0 );
     my $remaining  = $goal - $total;
 
     # News priorities
@@ -134,12 +138,12 @@ get '/progress' => sub {
         left_mins        => $minutes,
         left_hours       => $hours,
         goal             => $goal,
-        goal_formatted   => format_price( $goal, 0, '$' ),
+        goal_formatted   => $formatter->format_price( $goal, 0, '$' ),
         raised           => $total,
-        raised_formatted => format_price( $total, 0, '$' ),
+        raised_formatted => $formatter->format_price( $total, 0, '$' ),
         people           => $count,
         percentage       => $percentage,
-        remaining        => format_price( $remaining, 0, '$' ),
+        remaining        => $formatter->format_price( $remaining, 0, '$' ),
         contributors     => \@contributors,
         votes            => \@votes,
         version          => $config->{'app_version'},
