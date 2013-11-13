@@ -2,3 +2,4 @@ app.development.json
 app.preview.json
 app.production.json
 schema.conf
+NOTES.md
