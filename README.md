@@ -13,3 +13,7 @@ Parameters:
 * date_end (required, e.g., 2013-11-01)
 * date_start (required, e.g., 2013-09-01
 * goal (required, e.g., 2000)
+
+### /builderlist.json
+
+Parameters: none
