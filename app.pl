@@ -22,17 +22,47 @@ helper schema => sub {
     return $schema;
 };
 
-helper search_transactions => sub {
+helper search_records => sub {
     my $self   = shift;
+    my $resultset   = shift;
     my $search = shift;
     my $schema = $self->schema;
-    my $rs     = $schema->resultset( 'Transaction' )->search( $search );
+    my $rs     = $schema->resultset( $resultset )->search( $search );
     return $rs;
 };
 
 get '/' => sub {
     my $self = shift;
     $self->render( 'index' );
+};
+
+# Provide a data structure for displaying an updated builder list
+
+get '/builderlist' => sub {
+    my $self = shift;
+    my $rs  = $self->search_records( 'Builder', {});
+    my $count = $rs->count;
+    my @builderlist = $rs->search(
+        { builder_is_anonymous => { '!=' => 1 } },
+        {   select =>
+                [ 'first_name', 'last_name' ],
+            order_by     => { -asc => 'last_name' },
+            result_class => 'DBIx::Class::ResultClass::HashRefInflator',
+        }
+    );
+
+    my $result = {
+        builderlist => \@builderlist,
+        count       => $count,
+    };
+    $self->stash(
+        result => $result,
+    );
+    $self->respond_to(
+        json => sub { $self->render_jsonp( { result => $result } ); },
+        html => { template => 'builderlist' },
+        any  => { text     => '', status => 204 }
+    );
 };
 
 # Provide a data structure for following progress on fundraising campaigns
@@ -59,7 +89,7 @@ get '/progress' => sub {
         = $duration->in_units( 'days', 'hours', 'minutes' );
     my $dtf = $self->schema->storage->datetime_parser;
     # Transactions and calculations
-    my $rs  = $self->search_transactions(
+    my $rs  = $self->search_records( 'Transaction',
         { trans_date => { '>' => $dtf->format_datetime( $dt_start ) }, } );
     my $count = $rs->count;
     # Need to multiply those rows with a value in plan_code by 12 months
@@ -156,7 +186,7 @@ get '/progress' => sub {
         html => { template => 'progress' },
         any  => { text     => '', status => 204 }
     );
-} => 'progress';
+};
 
 app->secret( $config->{'app_secret'} );
 app->start;
@@ -172,6 +202,13 @@ __DATA__
 % title 'HTML output for testing';
 <pre>
 %= dumper ( $progress );
+</pre>
+
+@@ builderlist.html.ep
+% layout 'default';
+% title 'HTML output for testing';
+<pre>
+%= dumper ( $result );
 </pre>
 
 @@ layouts/default.html.ep

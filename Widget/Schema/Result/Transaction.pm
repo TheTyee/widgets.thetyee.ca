@@ -119,6 +119,26 @@ __PACKAGE__->table("support.transactions");
   data_type: 'integer'
   is_nullable: 1
 
+=head2 wc_status
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 wc_response
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 user_agent
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 wc_send_response
+
+  data_type: 'text'
+  is_nullable: 1
+
 =cut
 
 __PACKAGE__->add_columns(
@@ -159,6 +179,14 @@ __PACKAGE__->add_columns(
   { data_type => "text", is_nullable => 1 },
   "pref_newspriority",
   { data_type => "integer", is_nullable => 1 },
+  "wc_status",
+  { data_type => "text", is_nullable => 1 },
+  "wc_response",
+  { data_type => "text", is_nullable => 1 },
+  "user_agent",
+  { data_type => "text", is_nullable => 1 },
+  "wc_send_response",
+  { data_type => "text", is_nullable => 1 },
 );
 
 =head1 PRIMARY KEY
@@ -174,8 +202,8 @@ __PACKAGE__->add_columns(
 __PACKAGE__->set_primary_key("id");
 
 
-# Created by DBIx::Class::Schema::Loader v0.07036 @ 2013-10-09 12:32:26
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:Ijq614DacdMPKLHyCQK2RA
+# Created by DBIx::Class::Schema::Loader v0.07036 @ 2013-11-13 14:21:00
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:UTldnxJZnfEyqlmbvUJUIg
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration
