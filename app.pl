@@ -105,6 +105,8 @@ get '/progress' => sub {
         next
             unless ( $trans->pref_anonymous
             && $trans->pref_anonymous eq 'Yes' );
+        my $n = $trans->first_name . $trans->last_name;
+        next if $n =~ /\d+/; # No card numbers for names please
         my $contrib = {
             name  => $trans->first_name . ' ' . $trans->last_name,
             city  => $trans->city,
