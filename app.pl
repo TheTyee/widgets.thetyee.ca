@@ -65,6 +65,34 @@ get '/builderlist' => sub {
     );
 };
 
+get '/shares/email' => sub {
+    my $self = shift;
+    my $rs  = $self->search_records( 'Event', {});
+    my $count = $rs->count;
+    my @urls = $rs->search( # TODO eventually, this should be date restricted
+        undef,
+        {   select =>
+                [ 'url', { count => 'url' } ],
+            as           => [qw/ url count /],
+            group_by     => [qw/ url /],
+            order_by     => { -desc => 'count' },
+            result_class => 'DBIx::Class::ResultClass::HashRefInflator',
+        }
+    );
+
+    my $result = {
+        urls => \@urls,
+    };
+    $self->stash(
+        result => $result,
+    );
+    $self->respond_to(
+        json => sub { $self->render_jsonp( { result => $result } ); },
+        html => { template => 'dump' },
+        any  => { text     => '', status => 204 }
+    );
+};
+
 # Provide a data structure for following progress on fundraising campaigns
 get '/progress' => sub {
     my $self       = shift;
@@ -212,7 +240,12 @@ __DATA__
 <pre>
 %= dumper ( $result );
 </pre>
-
+@@ dump.html.ep
+% layout 'default';
+% title 'HTML output for testing';
+<pre>
+%= dumper ( $result );
+</pre>
 @@ layouts/default.html.ep
 <!DOCTYPE html>
 <html>
