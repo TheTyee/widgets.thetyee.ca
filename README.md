@@ -17,3 +17,11 @@ Parameters:
 ### /builderlist.json
 
 Parameters: none
+
+### /shares/email.json
+
+Parameters: none
+
+
+### TODO
+
