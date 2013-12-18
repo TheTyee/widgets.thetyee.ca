@@ -67,15 +67,17 @@ get '/builderlist' => sub {
 
 get '/shares/email' => sub {
     my $self = shift;
+    my $limit   = $self->param( 'limit' ) || 10;
     my $rs  = $self->search_records( 'Event', {});
     my $count = $rs->count;
     my @urls = $rs->search( # TODO eventually, this should be date restricted
         undef,
         {   select =>
-                [ 'url', { count => 'url' } ],
-            as           => [qw/ url count /],
-            group_by     => [qw/ url /],
+                [ 'url', { count => 'url' }, 'title' ],
+            as           => [qw/ url count title /],
+            group_by     => [qw/ url title /],
             order_by     => { -desc => 'count' },
+            rows         => $limit,
             result_class => 'DBIx::Class::ResultClass::HashRefInflator',
         }
     );
