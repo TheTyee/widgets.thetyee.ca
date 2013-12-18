@@ -76,7 +76,7 @@ get '/shares/email' => sub {
                 [ 'url', { count => 'url' }, 'title' ],
             as           => [qw/ url count title /],
             group_by     => [qw/ url title /],
-            order_by     => { -desc => 'count' },
+            order_by     => [ { -desc => 'count' }, { -asc => 'title'} ],
             rows         => $limit,
             result_class => 'DBIx::Class::ResultClass::HashRefInflator',
         }
