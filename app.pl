@@ -12,9 +12,10 @@ use DBIx::Class::ResultClass::HashRefInflator;
 my $config = plugin 'JSONConfig';
 plugin JSONP => callback => 'cb';
 
-my $formatter = new Number::Format(-thousands_sep   => ',',
-                            -decimal_point   => '.',
-                            );
+my $formatter = new Number::Format(
+    -thousands_sep => ',',
+    -decimal_point => '.',
+);
 
 helper schema => sub {
     my $schema = Widget::Schema->connect( $config->{'pg_dsn'},
@@ -23,11 +24,11 @@ helper schema => sub {
 };
 
 helper search_records => sub {
-    my $self   = shift;
-    my $resultset   = shift;
-    my $search = shift;
-    my $schema = $self->schema;
-    my $rs     = $schema->resultset( $resultset )->search( $search );
+    my $self      = shift;
+    my $resultset = shift;
+    my $search    = shift;
+    my $schema    = $self->schema;
+    my $rs        = $schema->resultset( $resultset )->search( $search );
     return $rs;
 };
 
@@ -39,14 +40,13 @@ get '/' => sub {
 # Provide a data structure for displaying an updated builder list
 
 get '/builderlist' => sub {
-    my $self = shift;
-    my $rs  = $self->search_records( 'Builder', {});
-    my $count = $rs->count;
+    my $self        = shift;
+    my $rs          = $self->search_records( 'Builder', {} );
+    my $count       = $rs->count;
     my @builderlist = $rs->search(
         { builder_is_anonymous => { '!=' => 1 } },
-        {   select =>
-                [ 'first_name', 'last_name' ],
-            order_by     => { -asc => 'last_name' },
+        {   select => [ 'first_name', 'last_name' ],
+            order_by => { -asc => 'last_name' },
             result_class => 'DBIx::Class::ResultClass::HashRefInflator',
         }
     );
@@ -55,43 +55,49 @@ get '/builderlist' => sub {
         builderlist => \@builderlist,
         count       => $count,
     };
-    $self->stash(
-        result => $result,
-    );
+    $self->stash( result => $result, );
     $self->respond_to(
-        json => sub { $self->render_jsonp( { result => $result } ); },
+        json => sub        { $self->render_jsonp( { result => $result } ); },
         html => { template => 'builderlist' },
-        any  => { text     => '', status => 204 }
+        any  => { text     => '',                 status   => 204 }
     );
 };
 
 get '/shares/email' => sub {
-    my $self = shift;
-    my $limit   = $self->param( 'limit' ) || 10;
-    my $rs  = $self->search_records( 'Event', {});
+    my $self  = shift;
+    my $limit = $self->param( 'limit' ) || 10;
+    my $days  = $self->param( 'days' ) || 7;
+
+    # Only select records from the last X days (default: 7)
+    my $today = DateTime->now( time_zone => 'America/Los_Angeles' );
+    my $end =   DateTime->now( time_zone => 'America/Los_Angeles' )->subtract( days => $days );
+    my $dtf = $self->schema->storage->datetime_parser;
+    my $rs  = $self->search_records(
+        'Event',
+        {   timestamp => {
+                '<=', $dtf->format_datetime( $today ),
+                '>=',  $dtf->format_datetime( $end )
+            },
+        }
+    );
     my $count = $rs->count;
-    my @urls = $rs->search( # TODO eventually, this should be date restricted
+    my @urls  = $rs->search( 
         undef,
-        {   select =>
-                [ 'url', { count => 'url' }, 'title' ],
-            as           => [qw/ url count title /],
-            group_by     => [qw/ url title /],
-            order_by     => [ { -desc => 'count' }, { -asc => 'title'} ],
-            rows         => $limit,
+        {   select   => [ 'url', { count => 'url' }, 'title' ],
+            as       => [qw/ url count title /],
+            group_by => [qw/ url title /],
+            order_by => [ { -desc => 'count' }, { -asc => 'title' } ],
+            rows     => $limit,
             result_class => 'DBIx::Class::ResultClass::HashRefInflator',
         }
     );
 
-    my $result = {
-        urls => \@urls,
-    };
-    $self->stash(
-        result => $result,
-    );
+    my $result = { urls => \@urls, };
+    $self->stash( result => $result, );
     $self->respond_to(
-        json => sub { $self->render_jsonp( { result => $result } ); },
+        json => sub        { $self->render_jsonp( { result => $result } ); },
         html => { template => 'dump' },
-        any  => { text     => '', status => 204 }
+        any  => { text     => '',                 status   => 204 }
     );
 };
 
@@ -118,25 +124,29 @@ get '/progress' => sub {
     my ( $days, $hours, $minutes )
         = $duration->in_units( 'days', 'hours', 'minutes' );
     my $dtf = $self->schema->storage->datetime_parser;
+
     # Transactions and calculations
-    my $rs  = $self->search_records( 'Transaction',
+    my $rs = $self->search_records( 'Transaction',
         { trans_date => { '>' => $dtf->format_datetime( $dt_start ) }, } );
     my $count = $rs->count;
+
     # Need to multiply those rows with a value in plan_code by 12 months
     my $total;
     my @contributors;
     while ( my $trans = $rs->next ) {
         if ( $trans->plan_code ) {
             $total += $trans->amount_in_cents / 100 * 12;
-        } else {
+        }
+        else {
             $total += $trans->amount_in_cents / 100;
         }
+
         # only non-anon contribs
         next
             unless ( $trans->pref_anonymous
             && $trans->pref_anonymous eq 'Yes' );
         my $n = $trans->first_name . $trans->last_name;
-        next if $n =~ /\d+/; # No card numbers for names please
+        next if $n =~ /\d+/;    # No card numbers for names please
         my $contrib = {
             name  => $trans->first_name . ' ' . $trans->last_name,
             city  => $trans->city,
@@ -146,7 +156,7 @@ get '/progress' => sub {
     }
     @contributors = reverse @contributors;
     my $percentage = $formatter->round( $total / $goal * 100, 0 );
-    my $remaining  = $goal - $total;
+    my $remaining = $goal - $total;
 
     # News priorities
     my $priority_map = {
@@ -182,8 +192,9 @@ get '/progress' => sub {
         };
         push @votes, $vote;
     }
+
     # Only the top-three votes
-    @votes = @votes[0..2];
+    @votes = @votes[ 0 .. 2 ];
 
     # Data structure to return to requests
     my $progress = {
@@ -210,9 +221,7 @@ get '/progress' => sub {
         votes            => \@votes,
         version          => $config->{'app_version'},
     };
-    $self->stash(
-        progress   => $progress,
-    );
+    $self->stash( progress => $progress, );
     $self->respond_to(
         json => sub { $self->render_jsonp( { result => $progress } ); },
         html => { template => 'progress' },
