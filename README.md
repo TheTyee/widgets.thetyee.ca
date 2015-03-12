@@ -13,10 +13,13 @@ Parameters:
 * date_end (required, e.g., 2013-11-01)
 * date_start (required, e.g., 2013-09-01
 * goal (required, e.g., 2000)
+* multiplier (optional, e.g., 12 or 3 (months))
 
 ### /builderlist.json
 
-Parameters: none
+Parameters: 
+
+* date_start (optional, e.g., 2015-03-01)
 
 ### /shares/email.json
 
