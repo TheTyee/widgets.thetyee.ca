@@ -48,12 +48,17 @@ get '/builderlist' => sub {
     # Transactions and calculations
     #my $rs = $self->search_records( 'Transaction',
     #{ trans_date => { '>' => $dtf->format_datetime( $dt_start ) }, } );
-    my $rs          = $self->search_records( 'Builder', {} );
+    my $rs          = $self->search_records( 'Builder', {
+            $date_start ? 
+            ( builder_sub_date => { '>' => $dtf->format_datetime( $dt_start ) } ) 
+            : ()
+    } );
     my $count       = $rs->count;
     my @builderlist = $rs->search(
         {   builder_is_anonymous => { '!=' => 1 },
-
-            # DatTime
+            $date_start ? 
+            ( builder_sub_date => { '>' => $dtf->format_datetime( $dt_start ) } ) 
+            : ()
         },
         {   select => [ 'first_name', 'last_name' ],
             order_by => { -asc => 'last_name' },
