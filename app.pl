@@ -40,11 +40,21 @@ get '/' => sub {
 # Provide a data structure for displaying an updated builder list
 
 get '/builderlist' => sub {
-    my $self        = shift;
+    my $self       = shift;
+    my $date_start = $self->param( 'date_start' );
+    my $dt_start = DateTime::Format::DateParse->parse_datetime( $date_start );
+    my $dtf      = $self->schema->storage->datetime_parser;
+
+    # Transactions and calculations
+    #my $rs = $self->search_records( 'Transaction',
+    #{ trans_date => { '>' => $dtf->format_datetime( $dt_start ) }, } );
     my $rs          = $self->search_records( 'Builder', {} );
     my $count       = $rs->count;
     my @builderlist = $rs->search(
-        { builder_is_anonymous => { '!=' => 1 } },
+        {   builder_is_anonymous => { '!=' => 1 },
+
+            # DatTime
+        },
         {   select => [ 'first_name', 'last_name' ],
             order_by => { -asc => 'last_name' },
             result_class => 'DBIx::Class::ResultClass::HashRefInflator',
@@ -70,18 +80,19 @@ get '/shares/email' => sub {
 
     # Only select records from the last X days (default: 7)
     my $today = DateTime->now( time_zone => 'America/Los_Angeles' );
-    my $end =   DateTime->now( time_zone => 'America/Los_Angeles' )->subtract( days => $days );
+    my $end   = DateTime->now( time_zone => 'America/Los_Angeles' )
+        ->subtract( days => $days );
     my $dtf = $self->schema->storage->datetime_parser;
     my $rs  = $self->search_records(
         'Event',
         {   timestamp => {
                 '<=', $dtf->format_datetime( $today ),
-                '>=',  $dtf->format_datetime( $end )
+                '>=', $dtf->format_datetime( $end )
             },
         }
     );
     my $count = $rs->count;
-    my @urls  = $rs->search( 
+    my @urls  = $rs->search(
         undef,
         {   select   => [ 'url', { count => 'url' }, 'title' ],
             as       => [qw/ url count title /],
@@ -108,6 +119,7 @@ get '/progress' => sub {
     my $date_start = $self->param( 'date_start' );
     my $date_end   = $self->param( 'date_end' );
     my $goal       = $self->param( 'goal' );
+    my $multiplier = $self->param( 'multiplier' ) || 12;
 
     # Need some better error checking for required params
     unless ( $date_start && $date_end && $goal ) {
@@ -130,12 +142,12 @@ get '/progress' => sub {
         { trans_date => { '>' => $dtf->format_datetime( $dt_start ) }, } );
     my $count = $rs->count;
 
-    # Need to multiply those rows with a value in plan_code by 12 months
+# Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
     my $total;
     my @contributors;
     while ( my $trans = $rs->next ) {
         if ( $trans->plan_code ) {
-            $total += $trans->amount_in_cents / 100 * 12;
+            $total += $trans->amount_in_cents / 100 * $multiplier;
         }
         else {
             $total += $trans->amount_in_cents / 100;
