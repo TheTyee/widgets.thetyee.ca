@@ -3,3 +3,5 @@ app.preview.json
 app.production.json
 schema.conf
 NOTES.md
+local
+cpanfile.snapshot
