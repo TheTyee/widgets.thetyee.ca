@@ -147,8 +147,8 @@ get '/progress' => sub {
         { trans_date => { '>' => $dtf->format_datetime( $dt_start ) }, } );
     my $count = $rs->count;
 
-# Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
-    my $total;
+    # Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
+    my $total = 0;
     my @contributors;
     while ( my $trans = $rs->next ) {
         if ( $trans->plan_code ) {
@@ -211,7 +211,7 @@ get '/progress' => sub {
     }
 
     # Only the top-three votes
-    @votes = @votes[ 0 .. 2 ];
+    @votes = @votes[ 0 .. 2 ] if @votes;
 
     # Data structure to return to requests
     my $progress = {
