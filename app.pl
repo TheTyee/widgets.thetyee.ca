@@ -41,33 +41,34 @@ get '/' => sub {
 
 get '/builderlist' => sub {
     my $self       = shift;
-    my $date_start = $self->param( 'date_start' );
+    # Dates
+    my $date_start = $self->param( 'date_start' ) || '2012-01-01';
     my $dt_start = DateTime::Format::DateParse->parse_datetime( $date_start );
     my $dtf      = $self->schema->storage->datetime_parser;
 
     # Transactions and calculations
-    #my $rs = $self->search_records( 'Transaction',
-    #{ trans_date => { '>' => $dtf->format_datetime( $dt_start ) }, } );
-    my $rs          = $self->search_records( 'Builder', {
-            $date_start ? 
-            ( builder_sub_date => { '>' => $dtf->format_datetime( $dt_start ) } ) 
-            : ()
-    } );
-    my $count       = $rs->count;
-    my @builderlist = $rs->search(
-        {   builder_is_anonymous => { '!=' => 1 },
-            $date_start ? 
-            ( builder_sub_date => { '>' => $dtf->format_datetime( $dt_start ) } ) 
-            : ()
-        },
-        {   select => [ 'first_name', 'last_name' ],
-            order_by => { -asc => 'last_name' },
-            result_class => 'DBIx::Class::ResultClass::HashRefInflator',
-        }
-    );
+    my $rs = $self->search_records( 'Transaction',
+        { trans_date => { '>' => $dtf->format_datetime( $dt_start ) }, } );
+    my $count = $rs->count;
 
+    # Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
+    my @contributors;
+    while ( my $trans = $rs->next ) {
+        # only non-anon contribs
+        next
+            unless ( $trans->pref_anonymous
+            && $trans->pref_anonymous eq 'Yes' );
+        my $n = $trans->first_name . $trans->last_name;
+        next if $n =~ /\d+/;    # No card numbers for names please
+        my $contrib = {
+            first_name  => $trans->first_name,
+            last_name   => $trans->last_name,
+        };
+        push @contributors, $contrib;
+    }
+    @contributors = reverse @contributors;
     my $result = {
-        builderlist => \@builderlist,
+        builderlist => \@contributors,
         count       => $count,
     };
     $self->stash( result => $result, );
