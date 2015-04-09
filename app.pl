@@ -48,7 +48,7 @@ get '/builderlist' => sub {
 
     # Transactions and calculations
     my $rs = $self->search_records( 'Transaction',
-        { trans_date => { '>' => $dtf->format_datetime( $dt_start ) }, } );
+        { trans_date => { '>' => $dtf->format_datetime( $dt_start ) } } );
     my $count = $rs->count;
 
     # Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
@@ -66,7 +66,7 @@ get '/builderlist' => sub {
         };
         push @contributors, $contrib;
     }
-    @contributors = reverse @contributors;
+    @contributors = sort { $a->{'last_name'} cmp $b->{'last_name'} } @contributors;
     my $result = {
         builderlist => \@contributors,
         count       => $count,
