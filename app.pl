@@ -56,11 +56,6 @@ get '/builderlist' => sub {
     # Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
     my @contributors;
     while ( my $trans = $rs->next ) {
-	# if monthlyonly then get skip the plank plan codes or cancelled 
-	if ($self->param( 'monthlyonly')  ) {
-            next if (!$trans->plan_code || $trans->plan_code eq 'cancelled');
-        $monthlycount++; 
-	}
 
         # only non-anon contribs
         next
@@ -79,9 +74,6 @@ get '/builderlist' => sub {
         builderlist => \@contributors,
         count       => $count,
     };
-if ($self->param('monthlyonly')  ) {
-	$result->{count} = $monthlycount;
-}
     $self->stash( result => $result, );
     $self->respond_to(
         json => sub        { $self->render_jsonp( { result => $result } ); },
@@ -180,8 +172,8 @@ get '/progress' => sub {
 	    $onetimecount++;  
         }
 
-        # only non-anon contribs
-        next
+         only non-anon contribs
+         next
             unless ( $trans->pref_anonymous
             && $trans->pref_anonymous eq 'Yes' );
         my $n = $trans->first_name . $trans->last_name;
