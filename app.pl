@@ -9,6 +9,7 @@ use Number::Format;
 use Widget::Schema;
 use DBIx::Class::ResultClass::HashRefInflator;
 
+
 my $config = plugin 'JSONConfig';
 plugin JSONP => callback => 'cb';
 
@@ -39,6 +40,7 @@ get '/' => sub {
 
 # Provide a data structure for displaying an updated builder list
 
+
 get '/builderlist' => sub {
     my $self       = shift;
     # Dates
@@ -49,11 +51,17 @@ get '/builderlist' => sub {
     # Transactions and calculations
     my $rs = $self->search_records( 'Transaction',
         { trans_date => { '>' => $dtf->format_datetime( $dt_start ) } } );
-    my $count = $rs->count;
-
+    my $count = $rs->count;	
+    my $monthlycount = 0;
     # Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
     my @contributors;
     while ( my $trans = $rs->next ) {
+	# if monthlyonly then get skip the plank plan codes or cancelled 
+	if ($self->param( 'monthlyonly')  ) {
+            next if (!$trans->plan_code || $trans->plan_code eq 'cancelled');
+        $monthlycount++; 
+	}
+
         # only non-anon contribs
         next
             unless ( $trans->pref_anonymous
@@ -71,6 +79,9 @@ get '/builderlist' => sub {
         builderlist => \@contributors,
         count       => $count,
     };
+if ($self->param('monthlyonly')  ) {
+	$result->{count} = $monthlycount;
+}
     $self->stash( result => $result, );
     $self->respond_to(
         json => sub        { $self->render_jsonp( { result => $result } ); },
@@ -121,6 +132,7 @@ get '/shares/email' => sub {
 # Provide a data structure for following progress on fundraising campaigns
 get '/progress' => sub {
     my $self       = shift;
+   $self->res->headers->header('Access-Control-Allow-Origin' => '*');
     my $campaign   = $self->param( 'campaign' );
     my $date_start = $self->param( 'date_start' );
     my $date_end   = $self->param( 'date_end' );
@@ -147,16 +159,25 @@ get '/progress' => sub {
     my $rs = $self->search_records( 'Transaction',
         { trans_date => { '>' => $dtf->format_datetime( $dt_start ) }, } );
     my $count = $rs->count;
-
+    my $monthlycount = 0;
+    my $onetimecount = 0;
     # Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
     my $total = 0;
+    my $monthlytotal = 0;
+    my $onetimetotal = 0;
     my @contributors;
     while ( my $trans = $rs->next ) {
-        if ( $trans->plan_code ) {
+
+
+        if ( $trans->plan_code && $trans->plan_code ne "cancelled" ) {
             $total += $trans->amount_in_cents / 100 * $multiplier;
+ 	    $monthlytotal += $trans->amount_in_cents / 100 * $multiplier;
+		$monthlycount++;
         }
         else {
             $total += $trans->amount_in_cents / 100;
+	    $onetimetotal += $trans->amount_in_cents / 100;
+	    $onetimecount++;  
         }
 
         # only non-anon contribs
@@ -174,7 +195,9 @@ get '/progress' => sub {
     }
     @contributors = reverse @contributors;
     my $percentage = $formatter->round( $total / $goal * 100, 0 );
+    my $monthlypercentage = $formatter->round( $monthlytotal / $goal * 100, 0);
     my $remaining = $goal - $total;
+    my $monthlyremaining = $goal - $monthlytotal;
 
     # News priorities
     my $priority_map = {
@@ -232,9 +255,17 @@ get '/progress' => sub {
         goal_formatted   => $formatter->format_price( $goal, 0, '$' ),
         raised           => $total,
         raised_formatted => $formatter->format_price( $total, 0, '$' ),
+	raised_monthly 	 => $monthlytotal,
+	raised_monthly_formatted => $formatter->format_price( $monthlytotal, 0, '$' ),
+	raised_onetime   => $onetimetotal,
+        raised_onetime_formatted => $formatter->format_price( $onetimetotal, 0, '$' ),
         people           => $count,
+	people_monthly   => $monthlycount,
+	people_onetime   => $onetimecount,
         percentage       => $percentage,
+	percentage_monthly => $monthlypercentage,
         remaining        => $formatter->format_price( $remaining, 0, '$' ),
+        remaining_monthly        => $formatter->format_price( $monthlyremaining, 0, '$' ),
         contributors     => \@contributors,
         votes            => \@votes,
         version          => $config->{'app_version'},
