@@ -57,6 +57,10 @@ get '/builderlist' => sub {
     my @contributors;
     while ( my $trans = $rs->next ) {
 
+	if ($self->param( 'monthlyonly' ) ) {
+	    next if (!$trans->plan_code || $trans->plan_code eq "cancelled");
+	}
+	
         # only non-anon contribs
         next
             unless ( $trans->pref_anonymous
@@ -158,6 +162,8 @@ get '/progress' => sub {
     my $monthlytotal = 0;
     my $onetimetotal = 0;
     my @contributors;
+    my @monthlycontributors;
+    my @onetimecontributors;
     while ( my $trans = $rs->next ) {
 
 
@@ -184,6 +190,13 @@ get '/progress' => sub {
             state => $trans->state,
         };
         push @contributors, $contrib;
+	
+	if ( $trans->plan_code && $trans->plan_code ne "cancelled" ) {
+		push @monthlycontributors, $contrib
+	} else {
+	    push @onetimecontributors, $contrib;	 
+	}
+	
     }
     @contributors = reverse @contributors;
     my $percentage = $formatter->round( $total / $goal * 100, 0 );
@@ -259,6 +272,8 @@ get '/progress' => sub {
         remaining        => $formatter->format_price( $remaining, 0, '$' ),
         remaining_monthly        => $formatter->format_price( $monthlyremaining, 0, '$' ),
         contributors     => \@contributors,
+	contributors_montly => \@monthlycontributors,
+	contributors_onetime => \@onetimecontributors,
         votes            => \@votes,
         version          => $config->{'app_version'},
     };
