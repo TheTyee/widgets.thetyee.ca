@@ -50,20 +50,25 @@ get '/builderlist' => sub {
 
     # Transactions and calculations
     my $rs = $self->search_records( 'Transaction',
-        { trans_date => { '>' => $dtf->format_datetime( $dt_start ) } } );
+        { 
+            # TODO re-implement with clean data
+            #trans_date => { '>' => $dtf->format_datetime( $dt_start ) } 
+            id => { '>' => '3282' },
+        });
+
     my $count = $rs->count;	
     my $monthlycount = 0;
     # Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
     my @contributors;
     while ( my $trans = $rs->next ) {
 
-	if ($self->param( 'monthlyonly' ) ) {
-	    next if (!$trans->plan_code || $trans->plan_code eq "cancelled");
-	}
-	
+        if ($self->param( 'monthlyonly' ) ) {
+            next if (!$trans->plan_code || $trans->plan_code eq "cancelled");
+        }
+
         # only non-anon contribs
         next
-            unless ( $trans->pref_anonymous
+        unless ( $trans->pref_anonymous
             && $trans->pref_anonymous eq 'Yes' );
         my $n = $trans->first_name . $trans->last_name;
         next if $n =~ /\d+/;    # No card numbers for names please
@@ -95,7 +100,7 @@ get '/shares/email' => sub {
     # Only select records from the last X days (default: 7)
     my $today = DateTime->now( time_zone => 'America/Los_Angeles' );
     my $end   = DateTime->now( time_zone => 'America/Los_Angeles' )
-        ->subtract( days => $days );
+    ->subtract( days => $days );
     my $dtf = $self->schema->storage->datetime_parser;
     my $rs  = $self->search_records(
         'Event',
@@ -129,7 +134,7 @@ get '/shares/email' => sub {
 # Provide a data structure for following progress on fundraising campaigns
 get '/progress' => sub {
     my $self       = shift;
-   $self->res->headers->header('Access-Control-Allow-Origin' => '*');
+    $self->res->headers->header('Access-Control-Allow-Origin' => '*');
     my $campaign   = $self->param( 'campaign' );
     my $date_start = $self->param( 'date_start' );
     my $date_end   = $self->param( 'date_end' );
@@ -149,12 +154,16 @@ get '/progress' => sub {
     my $today = DateTime->now( time_zone => 'America/Los_Angeles' );
     my $duration = $dt_end->subtract_datetime( $today );
     my ( $days, $hours, $minutes )
-        = $duration->in_units( 'days', 'hours', 'minutes' );
+    = $duration->in_units( 'days', 'hours', 'minutes' );
     my $dtf = $self->schema->storage->datetime_parser;
 
     # Transactions and calculations
     my $rs = $self->search_records( 'Transaction',
-        { trans_date => { '>' => $dtf->format_datetime( $dt_start ) }, } );
+        { 
+            # TODO re-implement this when data is cleaned
+            #trans_date => { '>' => $dtf->format_datetime( $dt_start ) }
+            id => { '>' => '3282' },
+        });
     my $count = $rs->count;
     my $monthlycount = 0;
     my $onetimecount = 0;
@@ -170,18 +179,18 @@ get '/progress' => sub {
 
         if ( $trans->plan_code && $trans->plan_code ne "cancelled" ) {
             $total += $trans->amount_in_cents / 100 * $multiplier;
- 	    $monthlytotal += $trans->amount_in_cents / 100 * $multiplier;
-		$monthlycount++;
+            $monthlytotal += $trans->amount_in_cents / 100 * $multiplier;
+            $monthlycount++;
         }
         else {
             $total += $trans->amount_in_cents / 100;
-	    $onetimetotal += $trans->amount_in_cents / 100;
-	    $onetimecount++;  
+            $onetimetotal += $trans->amount_in_cents / 100;
+            $onetimecount++;  
         }
 
-         only non-anon contribs
-         next
-            unless ( $trans->pref_anonymous
+        only non-anon contribs
+        next
+        unless ( $trans->pref_anonymous
             && $trans->pref_anonymous eq 'Yes' );
         my $n = $trans->first_name . $trans->last_name;
         next if $n =~ /\d+/;    # No card numbers for names please
@@ -191,14 +200,14 @@ get '/progress' => sub {
             state => $trans->state,
         };
         push @contributors, $contrib;
-	
-	
-	if ( $trans->plan_code && $trans->plan_code ne "cancelled" ) {
-		push @monthlycontributors, $contrib
-	} else {
-	    push @onetimecontributors, $contrib;	 
-	}
-	
+
+
+        if ( $trans->plan_code && $trans->plan_code ne "cancelled" ) {
+            push @monthlycontributors, $contrib
+        } else {
+            push @onetimecontributors, $contrib;	 
+        }
+
     }
     @contributors = reverse @contributors;
     my $percentage = $formatter->round( $total / $goal * 100, 0 );
@@ -223,7 +232,7 @@ get '/progress' => sub {
     my @priorities = $rs->search(
         { pref_newspriority => { '!=' => undef } },
         {   select =>
-                [ 'pref_newspriority', { count => 'pref_newspriority' } ],
+            [ 'pref_newspriority', { count => 'pref_newspriority' } ],
             as           => [qw/ pref_newspriority count /],
             group_by     => [qw/ pref_newspriority /],
             order_by     => { -desc => 'count' },
@@ -249,12 +258,12 @@ get '/progress' => sub {
         campaign             => $campaign,
         date_start           => $dt_start->datetime(),
         date_start_formatted => $dt_start->month_name . ' '
-            . $dt_start->day . ', '
-            . $dt_start->year,
+        . $dt_start->day . ', '
+        . $dt_start->year,
         date_end           => $dt_end->datetime(),
         date_end_formatted => $dt_end->month_name . ' '
-            . $dt_end->day . ', '
-            . $dt_end->year,
+        . $dt_end->day . ', '
+        . $dt_end->year,
         left_days        => $days,
         left_mins        => $minutes,
         left_hours       => $hours,
@@ -262,20 +271,20 @@ get '/progress' => sub {
         goal_formatted   => $formatter->format_price( $goal, 0, '$' ),
         raised           => $total,
         raised_formatted => $formatter->format_price( $total, 0, '$' ),
-	raised_monthly 	 => $monthlytotal,
-	raised_monthly_formatted => $formatter->format_price( $monthlytotal, 0, '$' ),
-	raised_onetime   => $onetimetotal,
+        raised_monthly 	 => $monthlytotal,
+        raised_monthly_formatted => $formatter->format_price( $monthlytotal, 0, '$' ),
+        raised_onetime   => $onetimetotal,
         raised_onetime_formatted => $formatter->format_price( $onetimetotal, 0, '$' ),
         people           => $count,
-	people_monthly   => $monthlycount,
-	people_onetime   => $onetimecount,
+        people_monthly   => $monthlycount,
+        people_onetime   => $onetimecount,
         percentage       => $percentage,
-	percentage_monthly => $monthlypercentage,
+        percentage_monthly => $monthlypercentage,
         remaining        => $formatter->format_price( $remaining, 0, '$' ),
         remaining_monthly        => $formatter->format_price( $monthlyremaining, 0, '$' ),
         contributors     => \@contributors,
-	contributors_monthly => \@monthlycontributors,
-	contributors_onetime => \@onetimecontributors,
+        contributors_monthly => \@monthlycontributors,
+        contributors_onetime => \@onetimecontributors,
         votes            => \@votes,
         version          => $config->{'app_version'},
     };
