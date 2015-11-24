@@ -73,6 +73,7 @@ get '/builderlist' => sub {
         };
         push @contributors, $contrib;
     }
+    $count = scalar @contributors;
     @contributors = sort { $a->{'last_name'} cmp $b->{'last_name'} } @contributors;
     my $result = {
         builderlist => \@contributors,
@@ -190,6 +191,7 @@ get '/progress' => sub {
             state => $trans->state,
         };
         push @contributors, $contrib;
+	
 	
 	if ( $trans->plan_code && $trans->plan_code ne "cancelled" ) {
 		push @monthlycontributors, $contrib
