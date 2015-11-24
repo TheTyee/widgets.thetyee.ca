@@ -160,7 +160,7 @@ get '/progress' => sub {
     my $onetimecount = 0;
     # Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
     my $total = 0;
-    my $monthlytotal = 0;
+    my $monthlytotal = 11191;
     my $onetimetotal = 0;
     my @contributors;
     my @monthlycontributors;
