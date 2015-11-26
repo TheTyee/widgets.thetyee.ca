@@ -53,7 +53,14 @@ get '/builderlist' => sub {
         { 
             # TODO re-implement with clean data
             #trans_date => { '>' => $dtf->format_datetime( $dt_start ) } 
-            id => { '>' => '3282' },
+#            id => { '>' => '3282' }
+#	     plan_code => {'!=', undef },
+# THIS LINE MEANS ONLY NON BLANK OR NON JUST SPACE - IS NOT NULL DOESN'T WORK
+	     plan_code => {'!~', '^ *$'},
+	     plan_code => {'!=', ''}, 
+# this below should be moved to plan_code once recurly sync script is remapped and the records updated that way too
+		plan_name => {'!=', 'cancelled'},
+		pref_anonymous => {'=', 'Yes'}
         });
 
     my $count = $rs->count;	
@@ -62,16 +69,17 @@ get '/builderlist' => sub {
     my @contributors;
     while ( my $trans = $rs->next ) {
 
-        if ($self->param( 'monthlyonly' ) ) {
-            next if (!$trans->plan_code || $trans->plan_code eq "cancelled");
-        }
+# disabled  this monthly flag -- will always be monthly / plan until the search query is changed above
+    #  if ($self->param( 'monthlyonly' ) ) {
+     #     next if ($trans->plan_code eq '' || $trans->plan code =~ /^ *$/ ||  $trans->plan_code eq  "cancelled");
+      #  }
 
         # only non-anon contribs
-        next
-        unless ( $trans->pref_anonymous
-            && $trans->pref_anonymous eq 'Yes' );
+#        next
+#        unless ( $trans->pref_anonymous
+#            && $trans->pref_anonymous eq 'Yes' );
         my $n = $trans->first_name . $trans->last_name;
-        next if $n =~ /\d+/;    # No card numbers for names please
+        # next if $n =~ /\d+/;    # No card numbers for names please
         my $contrib = {
             first_name  => $trans->first_name,
             last_name   => $trans->last_name,
@@ -177,7 +185,7 @@ get '/progress' => sub {
     while ( my $trans = $rs->next ) {
 
 
-        if ( $trans->plan_code && $trans->plan_code ne "cancelled" ) {
+        if ( $trans->plan_code && $trans->plan_name ne "cancelled" ) { #update to plan_code later when recurly sync fixed
             $total += $trans->amount_in_cents / 100 * $multiplier;
             $monthlytotal += $trans->amount_in_cents / 100 * $multiplier;
             $monthlycount++;
@@ -202,7 +210,7 @@ get '/progress' => sub {
         push @contributors, $contrib;
 
 
-        if ( $trans->plan_code && $trans->plan_code ne "cancelled" ) {
+        if ( $trans->plan_name && $trans->plan_name ne "cancelled" ) { #see above not about plan_code
             push @monthlycontributors, $contrib
         } else {
             push @onetimecontributors, $contrib;	 
