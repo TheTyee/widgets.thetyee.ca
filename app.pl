@@ -210,7 +210,7 @@ get '/progress' => sub {
         push @contributors, $contrib;
 
 
-        if ( $trans->plan_name && $trans->plan_name ne "cancelled" ) { #see above not about plan_code
+        if ( $trans->plan_name && $trans->plan_name ne "cancelled" && trans->plan_code !~ '^ *$' && trans->plan_code != '' ) { #see above not about plan_code
             push @monthlycontributors, $contrib
         } else {
             push @onetimecontributors, $contrib;	 
