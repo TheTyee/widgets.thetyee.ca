@@ -185,7 +185,7 @@ get '/progress' => sub {
     while ( my $trans = $rs->next ) {
 
 
-        if ( $trans->plan_code && $trans->plan_name ne "cancelled" && $trans->plan_code !~ '^ *$' && $trans->plan_code != '' ) { #update to plan_code later when recurly sync fixed
+        if ( $trans->plan_code && $trans->plan_name ne "cancelled" && !($trans->plan_code =~ '^ *$') && $trans->plan_code != '' ) { #update to plan_code later when recurly sync fixed
             $total += $trans->amount_in_cents / 100 * $multiplier;
             $monthlytotal += $trans->amount_in_cents / 100 * $multiplier;
             $monthlycount++;
@@ -210,7 +210,7 @@ get '/progress' => sub {
         push @contributors, $contrib;
 
 
-        if ( $trans->plan_name && $trans->plan_name ne "cancelled" && $trans->plan_code !~ '^ *$' && $trans->plan_code != '' ) { #see above not about plan_code
+        if ( $trans->plan_name && $trans->plan_name ne "cancelled" && !($trans->plan_code =~ '^ *$') && $trans->plan_code != '' ) { #see above not about plan_code
             push @monthlycontributors, $contrib
         } else {
             push @onetimecontributors, $contrib;	 
