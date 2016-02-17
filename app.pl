@@ -59,8 +59,8 @@ get '/builderlist' => sub {
 	     plan_code => {'!~', '^ *$'},
 	     plan_code => {'!=', ''}, 
 # this below should be moved to plan_code once recurly sync script is remapped and the records updated that way too
-		plan_name => {'!=', 'cancelled'},
-		pref_anonymous => {'=', 'Yes'}
+		plan_name => {'!=', 'cancelled'}
+#		pref_anonymous => {'=', 'Yes'} # removed this because need to get everyone for the count then remove the anonymous from the name list
         });
 
     my $count = $rs->count;	
@@ -72,12 +72,10 @@ get '/builderlist' => sub {
 # disabled  this monthly flag -- will always be monthly / plan until the search query is changed above
     #  if ($self->param( 'monthlyonly' ) ) {
      #     next if ($trans->plan_code eq '' || $trans->plan code =~ /^ *$/ ||  $trans->plan_code eq  "cancelled");
-      #  }
+     #  }
 
         # only non-anon contribs
-#        next
-#        unless ( $trans->pref_anonymous
-#            && $trans->pref_anonymous eq 'Yes' );
+        next unless ( $trans->pref_anonymous && $trans->pref_anonymous eq 'Yes' );
         my $n = $trans->first_name . $trans->last_name;
         # next if $n =~ /\d+/;    # No card numbers for names please
         my $contrib = {
@@ -86,7 +84,7 @@ get '/builderlist' => sub {
         };
         push @contributors, $contrib;
     }
-    $count = scalar @contributors;
+   
     @contributors = sort { $a->{'last_name'} cmp $b->{'last_name'} } @contributors;
     my $result = {
         builderlist => \@contributors,
