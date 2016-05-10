@@ -166,16 +166,18 @@ get '/progress' => sub {
     # Transactions and calculations
     my $rs = $self->search_records( 'Transaction',
         { 
+            trans_date => { '>' => $dtf->format_datetime( $dt_start ) }
             # TODO re-implement this when data is cleaned
-            #trans_date => { '>' => $dtf->format_datetime( $dt_start ) }
-            id => { '>' => '3282' },
+            # This is here from the last campaign because the dates were fscked
+            # due to Recurly updates
+            #id => { '>' => '3282' },
         });
     my $count = $rs->count;
     my $monthlycount = 0;
     my $onetimecount = 0;
     # Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
     my $total = 0;
-    my $monthlytotal = 11191;
+    my $monthlytotal = 0;
     my $onetimetotal = 0;
     my @contributors;
     my @monthlycontributors;
@@ -302,7 +304,7 @@ get '/progress' => sub {
     );
 };
 
-app->secret( $config->{'app_secret'} );
+app->secrets([$config->{'app_secret'}]);
 app->start;
 
 __DATA__
