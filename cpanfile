@@ -1,4 +1,4 @@
-requires "Mojolicious", "==4.50";
+requires "Mojolicious", "";
 requires "DateTime::Format::DateParse", "";
 requires "Number::Format", "";
 requires "DBIx::Class", "";
