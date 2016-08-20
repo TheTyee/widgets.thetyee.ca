@@ -63,7 +63,6 @@ get '/builderlist' => sub {
     my @contributors;
     while ( my $trans = $rs->next ) {
 
-
         if ( $self->param( 'monthlyonly' ) ) {
             next
                 if ( $trans->plan_code eq ''
