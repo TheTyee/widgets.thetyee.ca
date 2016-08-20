@@ -138,6 +138,21 @@ get '/shares/email' => sub {
     );
 };
 
+get '/shares/email/url' => sub {
+    my $self = shift;
+    my $url  = $self->param( 'url' );
+    my $rs
+        = $self->search_records( 'Event', { url => { 'like', "%$url%" } } );
+    my $count = $rs->count;
+    my $result = { url => $url, shares => $count };
+    $self->stash( result => $result, );
+    $self->respond_to(
+        json => sub        { $self->render_jsonp( { result => $result } ); },
+        html => { template => 'dump' },
+        any  => { text     => '',                 status   => 204 }
+    );
+};
+
 # Provide a data structure for following progress on fundraising campaigns
 get '/progress' => sub {
     my $self = shift;
