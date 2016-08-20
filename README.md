@@ -23,8 +23,14 @@ Parameters:
 
 ### /shares/email.json
 
-Parameters: none
+Parameters:
 
+* limit (Optional, e.g., 20. Default: 10)
+* days (Optional, e.g., 15. Default: 7)
 
-### TODO
+### /shares/email/url.json
+
+Parameters:
+
+* url (Required, e.g,. http://thetyee.ca/Opinion/2013/12/05/Whos-Watching-Our-Money/ or any part thereof to match against)
 
