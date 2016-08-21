@@ -9,8 +9,11 @@ use Number::Format;
 use Widget::Schema;
 use DBIx::Class::ResultClass::HashRefInflator;
 
+
 my $config = plugin 'JSONConfig';
 plugin JSONP => callback => 'cb';
+
+my $ua = Mojo::UserAgent->new;
 
 my $formatter = new Number::Format(
     -thousands_sep => ',',
@@ -31,6 +34,23 @@ helper search_records => sub {
     my $rs        = $schema->resultset( $resultset )->search( $search );
     return $rs;
 };
+
+helper shares_twitter => sub {
+    my $self = shift;
+    my $url  = shift;
+    my $API  = 'http://public.newsharecounts.com/count.json?url=';
+    my $results;
+    my $tx = $ua->get($API . $url);
+    if (my $res = $tx->success) { 
+        $results = $res->json;
+    } else {
+      my $err = $tx->error;
+      $results->{'error_code'} = $err->{'code'};
+      $results->{'error_message'} = $err->{'message'};
+    }
+    return $results;
+};
+
 
 get '/' => sub {
     my $self = shift;
@@ -144,6 +164,18 @@ get '/shares/email/url' => sub {
         = $self->search_records( 'Event', { url => { 'like', "%$url%" } } );
     my $count = $rs->count;
     my $result = { url => $url, shares => $count };
+    $self->stash( result => $result, );
+    $self->respond_to(
+        json => sub        { $self->render_jsonp( { result => $result } ); },
+        html => { template => 'dump' },
+        any  => { text     => '',                 status   => 204 }
+    );
+};
+
+get '/shares/twitter/url' => sub {
+    my $self = shift;
+    my $url  = $self->param( 'url' );
+    my $result = $self->shares_twitter($url);
     $self->stash( result => $result, );
     $self->respond_to(
         json => sub        { $self->render_jsonp( { result => $result } ); },
