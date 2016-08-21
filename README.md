@@ -28,9 +28,33 @@ Parameters:
 * limit (Optional, e.g., 20. Default: 10)
 * days (Optional, e.g., 15. Default: 7)
 
-### /shares/email/url.json
+## Shares by URL
+
+### /shares/url/all.json
 
 Parameters:
 
+* url (Required, e.g,. http://thetyee.ca/Opinion/2013/12/05/Whos-Watching-Our-Money/)
+
+Returns:
+
+* JSON object with shares for Facebook, Twitter, and E-mail
+* The `total` property contains a sum of all shares for that URL across services
+
+### /shares/url/email.json
+
+E-mail shares (via The Tyee's bespoke article e-mail tool).
+
 * url (Required, e.g,. http://thetyee.ca/Opinion/2013/12/05/Whos-Watching-Our-Money/ or any part thereof to match against)
 
+### /shares/url/facebook.json
+
+Facebook shares (via the Facebook Object Graph API using an [App Access Token](https://developers.facebook.com/docs/facebook-login/access-tokens#apptokens)).
+
+* url (Required, e.g,. http://thetyee.ca/Opinion/2013/12/05/Whos-Watching-Our-Money/)
+
+### /shares/url/twitter.json
+
+Twitter shares (via the [NewShareCounts](http://newsharecounts.com/) API). Will eventually be replaced with in-house data.
+
+* url (Required, e.g,. http://thetyee.ca/Opinion/2013/12/05/Whos-Watching-Our-Money/)
