@@ -62,6 +62,46 @@ helper shares_twitter => sub {
     return $results;
 };
 
+helper get_facebook_token => sub {
+    #TODO 
+    # + Cache this response
+    # + Return cache if fresh
+    # + If not, queue a job to re-validate
+    my $APP_ID = $config->{'fb_app_id'};
+    my $SECRET = $config->{'fb_app_secret'};
+    my $API  = 'https://graph.facebook.com/v2.1';
+    my $OAUTH = "/oauth/access_token?client_id=$APP_ID&client_secret=$SECRET&grant_type=client_credentials";
+    my $results;
+    my $tx = $ua->get($API . $OAUTH);
+    if (my $res = $tx->success) { 
+        $results = $res->body;
+    } else {
+      my $err = $tx->error;
+      $results->{'error_code'} = $err->{'code'};
+      $results->{'error_message'} = $err->{'message'};
+    }
+    return $results;
+};
+
+helper shares_facebook => sub {
+    # TODO
+    # + Cache this response too
+    my $self = shift;
+    my $url  = shift;
+    my $API  = 'https://graph.facebook.com/v2.1';
+    my $token = $self->get_facebook_token;
+    my $results;
+    my $tx = $ua->get($API . '/?id=' . $url . '&' . $token);
+    if (my $res = $tx->success) { 
+        $results = $res->json;
+    } else {
+      my $err = $tx->error;
+      $results->{'error_code'} = $err->{'code'};
+      $results->{'error_message'} = $err->{'message'};
+      $results->{'token'} = $token;
+    }
+    return $results;
+};
 
 get '/' => sub {
     my $self = shift;
