@@ -35,6 +35,17 @@ helper search_records => sub {
     return $rs;
 };
 
+helper shares_email => sub {
+    my $self = shift;
+    my $url  = shift;
+    my $results;
+    my $rs
+        = $self->search_records( 'Event', { url => { 'like', "%$url%" } } );
+    my $count = $rs->count;
+    $results = { url => $url, shares => $count };
+    return $results;
+};
+
 helper shares_twitter => sub {
     my $self = shift;
     my $url  = shift;
