@@ -171,10 +171,7 @@ get '/shares/email' => sub {
 get '/shares/email/url' => sub {
     my $self = shift;
     my $url  = $self->param( 'url' );
-    my $rs
-        = $self->search_records( 'Event', { url => { 'like', "%$url%" } } );
-    my $count = $rs->count;
-    my $result = { url => $url, shares => $count };
+    my $result = $self->shares_email($url);
     $self->stash( result => $result, );
     $self->respond_to(
         json => sub        { $self->render_jsonp( { result => $result } ); },
