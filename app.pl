@@ -171,109 +171,124 @@ get '/builderlist' => sub {
     );
 };
 
+
+#-------------------------------------------------------------------------------
+#  Endpoints for returning share-related information
+#-------------------------------------------------------------------------------
 group {
-    under '/shares/' => sub {
-        return 1;
-    };
-    get '/email' => sub {
-        my $self  = shift;
-        my $limit = $self->param( 'limit' ) || 10;
-        my $days  = $self->param( 'days' ) || 7;
+    under '/shares/';
+        get '/email' => sub { # /shares/email/?limit=X&days=Y
+            my $self  = shift;
+            my $limit = $self->param( 'limit' ) || 10;
+            my $days  = $self->param( 'days' ) || 7;
 
-        # Only select records from the last X days (default: 7)
-        my $today = DateTime->now( time_zone => 'America/Los_Angeles' );
-        my $end   = DateTime->now( time_zone => 'America/Los_Angeles' )
-            ->subtract( days => $days );
-        my $dtf = $self->schema->storage->datetime_parser;
-        my $rs  = $self->search_records(
-            'Event',
-            {   timestamp => {
-                    '<=', $dtf->format_datetime( $today ),
-                    '>=', $dtf->format_datetime( $end )
-                },
-            }
-        );
-        my $count = $rs->count;
-        my @urls  = $rs->search(
-            undef,
-            {   select   => [ 'url', { count => 'url' }, 'title' ],
-                as       => [qw/ url count title /],
-                group_by => [qw/ url title /],
-                order_by => [ { -desc => 'count' }, { -asc => 'title' } ],
-                rows     => $limit,
-                result_class => 'DBIx::Class::ResultClass::HashRefInflator',
-            }
-        );
+            # Only select records from the last X days (default: 7)
+            my $today = DateTime->now( time_zone => 'America/Los_Angeles' );
+            my $end   = DateTime->now( time_zone => 'America/Los_Angeles' )
+                ->subtract( days => $days );
+            my $dtf = $self->schema->storage->datetime_parser;
+            my $rs  = $self->search_records(
+                'Event',
+                {   timestamp => {
+                        '<=', $dtf->format_datetime( $today ),
+                        '>=', $dtf->format_datetime( $end )
+                    },
+                }
+            );
+            my $count = $rs->count;
+            my @urls  = $rs->search(
+                undef,
+                {   select   => [ 'url', { count => 'url' }, 'title' ],
+                    as       => [qw/ url count title /],
+                    group_by => [qw/ url title /],
+                    order_by => [ { -desc => 'count' }, { -asc => 'title' } ],
+                    rows     => $limit,
+                    result_class => 'DBIx::Class::ResultClass::HashRefInflator',
+                }
+            );
 
-        my $result = { urls => \@urls, };
-        $self->stash( result => $result, );
-        $self->respond_to(
-            json => sub        { $self->render_jsonp( { result => $result } ); },
-            html => { template => 'dump' },
-            any  => { text     => '',                 status   => 204 }
-        );
-    };
-    under '/shares/url';
-    get '/email' => sub {
-        my $self = shift;
-        my $url  = $self->param( 'url' );
-        my $result = $self->shares_email($url);
-        $self->stash( result => $result, );
-        $self->respond_to(
-            json => sub        { $self->render_jsonp( { result => $result } ); },
-            html => { template => 'dump' },
-            any  => { text     => '',                 status   => 204 }
-        );
-    };
-
-    get '/shares/twitter/url' => sub {
-        my $self = shift;
-        my $url  = $self->param( 'url' );
-        my $result = $self->shares_twitter($url);
-        $self->stash( result => $result, );
-        $self->respond_to(
-            json => sub        { $self->render_jsonp( { result => $result } ); },
-            html => { template => 'dump' },
-            any  => { text     => '',                 status   => 204 }
-        );
-    };
-
-    get '/shares/facebook/url' => sub {
-        my $self = shift;
-        my $url  = $self->param( 'url' );
-        my $result = $self->shares_facebook($url);
-        $self->stash( result => $result, );
-        $self->respond_to(
-            json => sub        { $self->render_jsonp( { result => $result } ); },
-            html => { template => 'dump' },
-            any  => { text     => '',                 status   => 204 }
-        );
-    };
-
-    get '/shares/all/' => sub {
-        my $self = shift;
-        my $url  = $self->param( 'url' );
-        my $fb = $self->shares_facebook($url);
-        my $tw = $self->shares_twitter($url);
-        my $em = $self->shares_email($url);
-        my $fb_shares = $fb->{'share'}{'share_count'};
-        my $tw_shares = $tw->{'count'};
-        my $em_shares = $em->{'shares'};
-        my $total = $fb_shares + $tw_shares + $em_shares;
-        my $result = {
-            facebook => $fb,
-            twitter  => $tw,
-            email    => $em,
-            total    => $total
+            my $result = { urls => \@urls, };
+            $self->stash( result => $result, );
+            $self->respond_to(
+                json => sub        { $self->render_jsonp( { result => $result } ); },
+                html => { template => 'dump' },
+                any  => { text     => '',                 status   => 204 }
+            );
         };
-        $self->stash( result => $result, );
-        $self->respond_to(
-            json => sub        { $self->render_jsonp( { result => $result } ); },
-            html => { template => 'dump' },
-            any  => { text     => '',                 status   => 204 }
-        );
-    };
-}; # End under /shares
+    under '/shares/url' => sub {
+            my $self = shift;
+            my $url  = $self->param( 'url' );
+            # Make sure that all URL requests are legit
+            return 1 if $url =~ m!^http://thetyee\.ca|^http://preview\.thetyee\.ca!;
+            $self->stash( result => 'not permitted', );
+            $self->respond_to(
+                json => { json => { message => 'not permitted' }, status => 401 },
+                html => { template => 'dump' },
+                any  => { text     => '',                 status   => 204 }
+            );
+            return undef;
+        };
+        get '/all/' => sub { # /shares/url/all?=url=http://...
+            my $self = shift;
+            my $url  = $self->param( 'url' );
+            my $fb = $self->shares_facebook($url);
+            my $tw = $self->shares_twitter($url);
+            my $em = $self->shares_email($url);
+            my $fb_shares = $fb->{'share'}{'share_count'};
+            my $tw_shares = $tw->{'count'};
+            my $em_shares = $em->{'shares'};
+            my $total = $fb_shares + $tw_shares + $em_shares;
+            my $result = {
+                facebook => $fb,
+                twitter  => $tw,
+                email    => $em,
+                total    => $total
+            };
+            $self->stash( result => $result, );
+            $self->respond_to(
+                json => sub        { $self->render_jsonp( { result => $result } ); },
+                html => { template => 'dump' },
+                any  => { text     => '',                 status   => 204 }
+            );
+        };
+
+        get '/email' => sub { # /shares/url/email?url=http://...
+            my $self = shift;
+            my $url  = $self->param( 'url' );
+            my $result = $self->shares_email($url);
+            $self->stash( result => $result, );
+            $self->respond_to(
+                json => sub        { $self->render_jsonp( { result => $result } ); },
+                html => { template => 'dump' },
+                any  => { text     => '',                 status   => 204 }
+            );
+        };
+
+        get '/twitter' => sub { # /shares/url/twitter?url=http://...
+            my $self = shift;
+            my $url  = $self->param( 'url' );
+            my $result = $self->shares_twitter($url);
+            $self->stash( result => $result, );
+            $self->respond_to(
+                json => sub        { $self->render_jsonp( { result => $result } ); },
+                html => { template => 'dump' },
+                any  => { text     => '',                 status   => 204 }
+            );
+        };
+
+        get '/facebook' => sub { # /shares/url/facebook?url=http://...
+            my $self = shift;
+            my $url  = $self->param( 'url' );
+            my $result = $self->shares_facebook($url);
+            $self->stash( result => $result, );
+            $self->respond_to(
+                json => sub        { $self->render_jsonp( { result => $result } ); },
+                html => { template => 'dump' },
+                any  => { text     => '',                 status   => 204 }
+            );
+        };
+
+}; # End group.
 
 # Provide a data structure for following progress on fundraising campaigns
 get '/progress' => sub {
