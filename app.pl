@@ -9,8 +9,11 @@ use Number::Format;
 use Widget::Schema;
 use DBIx::Class::ResultClass::HashRefInflator;
 
+
 my $config = plugin 'JSONConfig';
 plugin JSONP => callback => 'cb';
+
+my $ua = Mojo::UserAgent->new;
 
 my $formatter = new Number::Format(
     -thousands_sep => ',',
@@ -30,6 +33,76 @@ helper search_records => sub {
     my $schema    = $self->schema;
     my $rs        = $schema->resultset( $resultset )->search( $search );
     return $rs;
+};
+
+helper shares_email => sub {
+    my $self = shift;
+    my $url  = shift;
+    my $results;
+    my $rs
+        = $self->search_records( 'Event', { url => { 'like', "%$url%" } } );
+    my $count = $rs->count;
+    $results = { url => $url, shares => $count };
+    return $results;
+};
+
+helper shares_twitter => sub {
+    # TODO 
+    # + Replace this API with our own internal results scraper
+    my $self = shift;
+    my $url  = shift;
+    my $API  = 'http://public.newsharecounts.com/count.json?url=';
+    my $results;
+    my $tx = $ua->get($API . $url);
+    if (my $res = $tx->success) { 
+        $results = $res->json;
+    } else {
+      my $err = $tx->error;
+      $results->{'error_code'} = $err->{'code'};
+      $results->{'error_message'} = $err->{'message'};
+    }
+    return $results;
+};
+
+helper get_facebook_token => sub {
+    #TODO 
+    # + Cache this response
+    # + Return cache if fresh
+    # + If not, queue a job to re-validate
+    my $APP_ID = $config->{'fb_app_id'};
+    my $SECRET = $config->{'fb_app_secret'};
+    my $API  = 'https://graph.facebook.com/v2.1';
+    my $OAUTH = "/oauth/access_token?client_id=$APP_ID&client_secret=$SECRET&grant_type=client_credentials";
+    my $results;
+    my $tx = $ua->get($API . $OAUTH);
+    if (my $res = $tx->success) { 
+        $results = $res->body;
+    } else {
+      my $err = $tx->error;
+      $results->{'error_code'} = $err->{'code'};
+      $results->{'error_message'} = $err->{'message'};
+    }
+    return $results;
+};
+
+helper shares_facebook => sub {
+    # TODO
+    # + Cache this response too
+    my $self = shift;
+    my $url  = shift;
+    my $API  = 'https://graph.facebook.com/v2.1';
+    my $token = $self->get_facebook_token;
+    my $results;
+    my $tx = $ua->get($API . '/?id=' . $url . '&' . $token);
+    if (my $res = $tx->success) { 
+        $results = $res->json;
+    } else {
+      my $err = $tx->error;
+      $results->{'error_code'} = $err->{'code'};
+      $results->{'error_message'} = $err->{'message'};
+      $results->{'token'} = $token;
+    }
+    return $results;
 };
 
 get '/' => sub {
@@ -98,59 +171,124 @@ get '/builderlist' => sub {
     );
 };
 
-get '/shares/email' => sub {
-    my $self  = shift;
-    my $limit = $self->param( 'limit' ) || 10;
-    my $days  = $self->param( 'days' ) || 7;
 
-    # Only select records from the last X days (default: 7)
-    my $today = DateTime->now( time_zone => 'America/Los_Angeles' );
-    my $end   = DateTime->now( time_zone => 'America/Los_Angeles' )
-        ->subtract( days => $days );
-    my $dtf = $self->schema->storage->datetime_parser;
-    my $rs  = $self->search_records(
-        'Event',
-        {   timestamp => {
-                '<=', $dtf->format_datetime( $today ),
-                '>=', $dtf->format_datetime( $end )
-            },
-        }
-    );
-    my $count = $rs->count;
-    my @urls  = $rs->search(
-        undef,
-        {   select   => [ 'url', { count => 'url' }, 'title' ],
-            as       => [qw/ url count title /],
-            group_by => [qw/ url title /],
-            order_by => [ { -desc => 'count' }, { -asc => 'title' } ],
-            rows     => $limit,
-            result_class => 'DBIx::Class::ResultClass::HashRefInflator',
-        }
-    );
+#-------------------------------------------------------------------------------
+#  Endpoints for returning share-related information
+#-------------------------------------------------------------------------------
+group {
+    under '/shares/';
+        get '/email' => sub { # /shares/email/?limit=X&days=Y
+            my $self  = shift;
+            my $limit = $self->param( 'limit' ) || 10;
+            my $days  = $self->param( 'days' ) || 7;
 
-    my $result = { urls => \@urls, };
-    $self->stash( result => $result, );
-    $self->respond_to(
-        json => sub        { $self->render_jsonp( { result => $result } ); },
-        html => { template => 'dump' },
-        any  => { text     => '',                 status   => 204 }
-    );
-};
+            # Only select records from the last X days (default: 7)
+            my $today = DateTime->now( time_zone => 'America/Los_Angeles' );
+            my $end   = DateTime->now( time_zone => 'America/Los_Angeles' )
+                ->subtract( days => $days );
+            my $dtf = $self->schema->storage->datetime_parser;
+            my $rs  = $self->search_records(
+                'Event',
+                {   timestamp => {
+                        '<=', $dtf->format_datetime( $today ),
+                        '>=', $dtf->format_datetime( $end )
+                    },
+                }
+            );
+            my $count = $rs->count;
+            my @urls  = $rs->search(
+                undef,
+                {   select   => [ 'url', { count => 'url' }, 'title' ],
+                    as       => [qw/ url count title /],
+                    group_by => [qw/ url title /],
+                    order_by => [ { -desc => 'count' }, { -asc => 'title' } ],
+                    rows     => $limit,
+                    result_class => 'DBIx::Class::ResultClass::HashRefInflator',
+                }
+            );
 
-get '/shares/email/url' => sub {
-    my $self = shift;
-    my $url  = $self->param( 'url' );
-    my $rs
-        = $self->search_records( 'Event', { url => { 'like', "%$url%" } } );
-    my $count = $rs->count;
-    my $result = { url => $url, shares => $count };
-    $self->stash( result => $result, );
-    $self->respond_to(
-        json => sub        { $self->render_jsonp( { result => $result } ); },
-        html => { template => 'dump' },
-        any  => { text     => '',                 status   => 204 }
-    );
-};
+            my $result = { urls => \@urls, };
+            $self->stash( result => $result, );
+            $self->respond_to(
+                json => sub        { $self->render_jsonp( { result => $result } ); },
+                html => { template => 'dump' },
+                any  => { text     => '',                 status   => 204 }
+            );
+        };
+    under '/shares/url' => sub {
+            my $self = shift;
+            my $url  = $self->param( 'url' );
+            # Make sure that all URL requests are legit
+            return 1 if $url =~ m!^http://thetyee\.ca|^http://preview\.thetyee\.ca!;
+            $self->stash( result => 'not permitted', );
+            $self->respond_to(
+                json => { json => { message => 'not permitted' }, status => 401 },
+                html => { template => 'dump' },
+                any  => { text     => '',                 status   => 204 }
+            );
+            return undef;
+        };
+        get '/all/' => sub { # /shares/url/all?=url=http://...
+            my $self = shift;
+            my $url  = $self->param( 'url' );
+            my $fb = $self->shares_facebook($url);
+            my $tw = $self->shares_twitter($url);
+            my $em = $self->shares_email($url);
+            my $fb_shares = $fb->{'share'}{'share_count'};
+            my $tw_shares = $tw->{'count'};
+            my $em_shares = $em->{'shares'};
+            my $total = $fb_shares + $tw_shares + $em_shares;
+            my $result = {
+                facebook => $fb,
+                twitter  => $tw,
+                email    => $em,
+                total    => $total
+            };
+            $self->stash( result => $result, );
+            $self->respond_to(
+                json => sub        { $self->render_jsonp( { result => $result } ); },
+                html => { template => 'dump' },
+                any  => { text     => '',                 status   => 204 }
+            );
+        };
+
+        get '/email' => sub { # /shares/url/email?url=http://...
+            my $self = shift;
+            my $url  = $self->param( 'url' );
+            my $result = $self->shares_email($url);
+            $self->stash( result => $result, );
+            $self->respond_to(
+                json => sub        { $self->render_jsonp( { result => $result } ); },
+                html => { template => 'dump' },
+                any  => { text     => '',                 status   => 204 }
+            );
+        };
+
+        get '/twitter' => sub { # /shares/url/twitter?url=http://...
+            my $self = shift;
+            my $url  = $self->param( 'url' );
+            my $result = $self->shares_twitter($url);
+            $self->stash( result => $result, );
+            $self->respond_to(
+                json => sub        { $self->render_jsonp( { result => $result } ); },
+                html => { template => 'dump' },
+                any  => { text     => '',                 status   => 204 }
+            );
+        };
+
+        get '/facebook' => sub { # /shares/url/facebook?url=http://...
+            my $self = shift;
+            my $url  = $self->param( 'url' );
+            my $result = $self->shares_facebook($url);
+            $self->stash( result => $result, );
+            $self->respond_to(
+                json => sub        { $self->render_jsonp( { result => $result } ); },
+                html => { template => 'dump' },
+                any  => { text     => '',                 status   => 204 }
+            );
+        };
+
+}; # End group.
 
 # Provide a data structure for following progress on fundraising campaigns
 get '/progress' => sub {

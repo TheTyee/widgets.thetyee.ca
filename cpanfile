@@ -9,3 +9,5 @@ requires "DateTime::Format::Pg", "";
 requires "DBIx::Class::Schema::Loader", "";
 # Loader requires Config::General
 requires "Config::General", "";
+# For https get requests
+requires "IO::Socket::SSL", "";
