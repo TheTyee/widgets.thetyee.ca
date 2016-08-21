@@ -164,6 +164,7 @@ get '/builderlist' => sub {
         count       => $count,
     };
     $self->stash( result => $result, );
+    $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
     $self->respond_to(
         json => sub        { $self->render_jsonp( { result => $result } ); },
         html => { template => 'builderlist' },
@@ -209,6 +210,7 @@ group {
 
             my $result = { urls => \@urls, };
             $self->stash( result => $result, );
+            $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
             $self->respond_to(
                 json => sub        { $self->render_jsonp( { result => $result } ); },
                 html => { template => 'dump' },
@@ -221,6 +223,7 @@ group {
             # Make sure that all URL requests are legit
             return 1 if $url =~ m!^http://thetyee\.ca|^http://preview\.thetyee\.ca!;
             $self->stash( result => 'not permitted', );
+            $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
             $self->respond_to(
                 json => { json => { message => 'not permitted' }, status => 401 },
                 html => { template => 'dump' },
@@ -245,6 +248,7 @@ group {
                 total    => $total
             };
             $self->stash( result => $result, );
+            $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
             $self->respond_to(
                 json => sub        { $self->render_jsonp( { result => $result } ); },
                 html => { template => 'dump' },
@@ -257,6 +261,7 @@ group {
             my $url  = $self->param( 'url' );
             my $result = $self->shares_email($url);
             $self->stash( result => $result, );
+            $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
             $self->respond_to(
                 json => sub        { $self->render_jsonp( { result => $result } ); },
                 html => { template => 'dump' },
@@ -269,6 +274,7 @@ group {
             my $url  = $self->param( 'url' );
             my $result = $self->shares_twitter($url);
             $self->stash( result => $result, );
+            $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
             $self->respond_to(
                 json => sub        { $self->render_jsonp( { result => $result } ); },
                 html => { template => 'dump' },
@@ -281,6 +287,7 @@ group {
             my $url  = $self->param( 'url' );
             my $result = $self->shares_facebook($url);
             $self->stash( result => $result, );
+            $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
             $self->respond_to(
                 json => sub        { $self->render_jsonp( { result => $result } ); },
                 html => { template => 'dump' },
@@ -293,7 +300,6 @@ group {
 # Provide a data structure for following progress on fundraising campaigns
 get '/progress' => sub {
     my $self = shift;
-    $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
     my $campaign   = $self->param( 'campaign' );
     my $date_start = $self->param( 'date_start' );
     my $date_end   = $self->param( 'date_end' );
@@ -457,6 +463,7 @@ get '/progress' => sub {
         version              => $config->{'app_version'},
     };
     $self->stash( progress => $progress, );
+    $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
     $self->respond_to(
         json => sub { $self->render_jsonp( { result => $progress } ); },
         html => { template => 'progress' },
