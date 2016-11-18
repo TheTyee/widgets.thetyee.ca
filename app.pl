@@ -1,14 +1,17 @@
 #!/usr/bin/env perl
 use Mojolicious::Lite;
 use Mojo::UserAgent;
+use utf8;
+use Encode;
 use Data::Dumper;
+
+
 use Try::Tiny;
 use DateTime;
 use DateTime::Format::DateParse;
 use Number::Format;
 use Widget::Schema;
 use DBIx::Class::ResultClass::HashRefInflator;
-
 
 my $config = plugin 'JSONConfig';
 plugin JSONP => callback => 'cb';
@@ -208,11 +211,22 @@ group {
                 }
             );
 
-            my $result = { urls => \@urls, };
+            my @encoded;
+            my $tx;
+            # Ridiculous Bryan hack to decode the utf-8 characters from the db
+            foreach my $url (@urls) {                 
+                  my %newhash;
+                 foreach my $key (keys %$url) {
+                   $newhash{$key} = decode("utf-8", ($url->{$key}) );
+                  # $newhash{$key}  = $url->{$key};
+                 }
+                    push (@encoded, \%newhash );
+                }
+            my $result = { encoded => \@encoded, };            
             $self->stash( result => $result, );
             $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
             $self->respond_to(
-                json => sub        { $self->render_jsonp( { result => $result } ); },
+                json => sub     { $self->render_jsonp( { result => $result } ); },
                 html => { template => 'dump' },
                 any  => { text     => '',                 status   => 204 }
             );
@@ -497,7 +511,7 @@ __DATA__
 % layout 'default';
 % title 'HTML output for testing';
 <pre>
-%= dumper ( $result );
+%= dumper ( $result);
 </pre>
 @@ layouts/default.html.ep
 <!DOCTYPE html>
