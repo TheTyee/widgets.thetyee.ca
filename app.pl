@@ -222,7 +222,7 @@ group {
                  }
                     push (@encoded, \%newhash );
                 }
-            my $result = { encoded => \@encoded, };            
+            my $result = { result => \@encoded, };            
             $self->stash( result => $result, );
             $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
             $self->respond_to(
