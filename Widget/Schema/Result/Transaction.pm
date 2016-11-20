@@ -144,6 +144,66 @@ __PACKAGE__->table("support.transactions");
   data_type: 'text'
   is_nullable: 1
 
+=head2 appeal_code
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 pref_lapel
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 payment_type
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 phone
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 transit_number
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 bank_number
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 account_number
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 raiser
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 referrer
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 on_behalf_of
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 on_behalf_of_name_first
+
+  data_type: 'text'
+  is_nullable: 1
+
+=head2 on_behalf_of_name_last
+
+  data_type: 'text'
+  is_nullable: 1
+
 =cut
 
 __PACKAGE__->add_columns(
@@ -194,6 +254,30 @@ __PACKAGE__->add_columns(
   { data_type => "text", is_nullable => 1 },
   "hosted_login_token",
   { data_type => "text", is_nullable => 1 },
+  "appeal_code",
+  { data_type => "text", is_nullable => 1 },
+  "pref_lapel",
+  { data_type => "text", is_nullable => 1 },
+  "payment_type",
+  { data_type => "text", is_nullable => 1 },
+  "phone",
+  { data_type => "text", is_nullable => 1 },
+  "transit_number",
+  { data_type => "text", is_nullable => 1 },
+  "bank_number",
+  { data_type => "text", is_nullable => 1 },
+  "account_number",
+  { data_type => "text", is_nullable => 1 },
+  "raiser",
+  { data_type => "text", is_nullable => 1 },
+  "referrer",
+  { data_type => "text", is_nullable => 1 },
+  "on_behalf_of",
+  { data_type => "text", is_nullable => 1 },
+  "on_behalf_of_name_first",
+  { data_type => "text", is_nullable => 1 },
+  "on_behalf_of_name_last",
+  { data_type => "text", is_nullable => 1 },
 );
 
 =head1 PRIMARY KEY
@@ -209,8 +293,8 @@ __PACKAGE__->add_columns(
 __PACKAGE__->set_primary_key("id");
 
 
-# Created by DBIx::Class::Schema::Loader v0.07042 @ 2015-03-12 16:10:59
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:lZkyghLfdZqJDAJ+XBkcKg
+# Created by DBIx::Class::Schema::Loader v0.07043 @ 2016-11-19 21:28:05
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:3bmIsoJAcSOPxkq0cWXmiQ
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration
