@@ -322,11 +322,9 @@ get '/builderlist' => sub {
     );
 };
 
-
-
 # Provide a data structure for following progress on fundraising campaigns
 get '/progress' => sub {
-    my $self = shift;
+    my $self       = shift;
     my $campaign   = $self->param( 'campaign' );
     my $date_start = $self->param( 'date_start' );
     my $date_end   = $self->param( 'date_end' );
@@ -335,7 +333,8 @@ get '/progress' => sub {
 
     # Need some better error checking for required params
     unless ( $date_start && $date_end && $goal ) {
-        $self->render_not_found;
+        $self->render(
+            text => 'date_start, date_end, and goal need to be supplied' );
         return;
     }
 
@@ -350,12 +349,8 @@ get '/progress' => sub {
     my $dtf = $self->schema->storage->datetime_parser;
 
     # Transactions and calculations
-    my $rs = $self->search_records(
-        'Transaction',
-        {
-            trans_date => { '>' => $dtf->format_datetime( $dt_start ) }
-        }
-    );
+    my $rs = $self->search_records( 'Transaction',
+        { trans_date => { '>' => $dtf->format_datetime( $dt_start ) } } );
     my $count        = $rs->count;
     my $monthlycount = 0;
     my $onetimecount = 0;
@@ -383,22 +378,47 @@ get '/progress' => sub {
             $onetimecount++;
         }
 
-        only non-anon contribs next
+        # Only non-anon contribs
+        next
             unless ( $trans->pref_anonymous
             && $trans->pref_anonymous eq 'Yes' );
+        my $first;
+        my $last;
+        if ( $trans->on_behalf_of ) {
+            $first
+                = 'In '
+                . $trans->on_behalf_of . ' of '
+                . $trans->on_behalf_of_name_first;
+            $last = $trans->on_behalf_of_name_last;
+        }
+        else {
+            $first = $trans->first_name;
+            $last  = $trans->last_name;
+        }
         my $n = $trans->first_name . $trans->last_name;
         next if $n =~ /\d+/;    # No card numbers for names please
-        my $contrib = {
-            name  => $trans->first_name . ' ' . $trans->last_name,
-            city  => $trans->city,
-            state => $trans->state,
-        };
+
+        my $contrib;
+        if ( $trans->on_behalf_of ) {
+            $contrib = {
+                name  => $first . ' ' . $last,
+                city  => '',
+                state => '',
+            };
+        }
+        else {
+            $contrib = {
+                name  => $first . ' ' . $last,
+                city  => $trans->city,
+                state => $trans->state,
+            };
+        }
         push @contributors, $contrib;
 
         if (   $trans->plan_code
             && $trans->plan_name ne "cancelled"
             && $trans->plan_code ne '' )
-        {                       #see above not about plan_code
+        {    #see above not about plan_code
             push @monthlycontributors, $contrib;
         }
         else {
