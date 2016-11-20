@@ -4,8 +4,6 @@ use Mojo::UserAgent;
 use utf8;
 use Encode;
 use Data::Dumper;
-
-
 use Try::Tiny;
 use DateTime;
 use DateTime::Format::DateParse;
@@ -111,68 +109,6 @@ helper shares_facebook => sub {
 get '/' => sub {
     my $self = shift;
     $self->render( 'index' );
-};
-
-# Provide a data structure for displaying an updated builder list
-
-get '/builderlist' => sub {
-    my $self = shift;
-
-    # Dates
-    my $date_start = $self->param( 'date_start' ) || '2012-01-01';
-    my $dt_start = DateTime::Format::DateParse->parse_datetime( $date_start );
-    my $dtf      = $self->schema->storage->datetime_parser;
-
-    # Transactions and calculations
-    my $rs = $self->search_records(
-        'Transaction',
-        {
-            # TODO re-implement with clean data
-            trans_date => { '>' => $dtf->format_datetime( $dt_start ) }
-        }
-    );
-
-    my $count        = $rs->count;
-    my $monthlycount = 0;
-
-# Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
-    my @contributors;
-    while ( my $trans = $rs->next ) {
-
-        if ( $self->param( 'monthlyonly' ) ) {
-            next
-                if ( $trans->plan_code eq ''
-                || $trans->plan_code =~ /^ *$/
-                || $trans->plan_code eq "cancelled" );
-        }
-
-        # only non-anon contribs
-        next
-            unless ( $trans->pref_anonymous
-            && $trans->pref_anonymous eq 'Yes' );
-        my $n = $trans->first_name . $trans->last_name;
-
-        # next if $n =~ /\d+/;    # No card numbers for names please
-        my $contrib = {
-            first_name => $trans->first_name,
-            last_name  => $trans->last_name,
-        };
-        push @contributors, $contrib;
-    }
-
-    @contributors
-        = sort { $a->{'last_name'} cmp $b->{'last_name'} } @contributors;
-    my $result = {
-        builderlist => \@contributors,
-        count       => $count,
-    };
-    $self->stash( result => $result, );
-    $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
-    $self->respond_to(
-        json => sub        { $self->render_jsonp( { result => $result } ); },
-        html => { template => 'builderlist' },
-        any  => { text     => '',                 status   => 204 }
-    );
 };
 
 
@@ -310,6 +246,83 @@ group {
         };
 
 }; # End group.
+
+# Provide a data structure for displaying an updated builder list
+get '/builderlist' => sub {
+    my $self = shift;
+
+    # Dates
+    my $date_start = $self->param( 'date_start' ) || '2012-01-01';
+    my $dt_start = DateTime::Format::DateParse->parse_datetime( $date_start );
+    my $dtf      = $self->schema->storage->datetime_parser;
+
+    # Transactions and calculations
+    my $rs = $self->search_records(
+        'Transaction',
+        {
+            # TODO re-implement with clean data
+            trans_date => { '>' => $dtf->format_datetime( $dt_start ) }
+        }
+    );
+
+    my $count        = $rs->count;
+    my $monthlycount = 0;
+
+# Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
+    my @contributors;
+    while ( my $trans = $rs->next ) {
+
+        if ( $self->param( 'monthlyonly' ) ) {
+            next
+                if ( $trans->plan_code eq ''
+                || $trans->plan_code =~ /^ *$/
+                || $trans->plan_code eq "cancelled" );
+        }
+
+        # Only non-anon contribs
+        next
+            unless ( $trans->pref_anonymous
+            && $trans->pref_anonymous eq 'Yes' );
+        my $first;
+        my $last;
+        if ( $trans->on_behalf_of ) {
+            $first
+                = 'In '
+                . $trans->on_behalf_of . ' of '
+                . $trans->on_behalf_of_name_first;
+            $last = $trans->on_behalf_of_name_last;
+        }
+        else {
+            $first = $trans->first_name;
+            $last  = $trans->last_name;
+        }
+
+        my $n = $first . ' ' . $last;
+        next if $n =~ /\d+/;    # No card numbers for names please
+
+        my $contrib = {
+            first_name => $first,
+            last_name  => $last,
+        };
+        push @contributors, $contrib;
+    }
+
+    @contributors
+        = sort { $a->{'last_name'} cmp $b->{'last_name'} } @contributors;
+    my $result = {
+        builderlist => \@contributors,
+        count       => $count,
+    };
+    $self->stash( result => $result, );
+    $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
+    $self->respond_to(
+        json => sub        { $self->render_jsonp( { result => $result } ); },
+        html => { template => 'builderlist' },
+        any  => { text     => '',                 status   => 204 }
+    );
+};
+
+
 
 # Provide a data structure for following progress on fundraising campaigns
 get '/progress' => sub {
