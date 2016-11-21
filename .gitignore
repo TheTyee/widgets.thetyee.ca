@@ -5,3 +5,4 @@ schema.conf
 NOTES.md
 local
 cpanfile.snapshot
+/.perl-version
