@@ -296,7 +296,7 @@ get '/builderlist' => sub {
         my $first;
         my $last;
         if ( $trans->on_behalf_of ) { # People who gave on behalf of another
-            if ( $trans->pref_anonymous && $trans->pref_anonymous eq 'Yes' ) { # If anon
+            if ( $trans->pref_anonymous && $trans->pref_anonymous eq 'No' ) { # If anon
                 $first
                     = 'In '
                     . $trans->on_behalf_of . ' of '
@@ -316,7 +316,7 @@ get '/builderlist' => sub {
             $first = $trans->first_name;
             $last  = $trans->last_name;
         }
-        if ( $trans->pref_anonymous && $trans->pref_anonymous eq 'Yes' && !$trans->on_behalf_of ) { # If anon
+        if ( $trans->pref_anonymous && $trans->pref_anonymous eq 'No' && !$trans->on_behalf_of ) { # If anon
             $first = '';
             $last  = '';
         }
