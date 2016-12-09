@@ -48,60 +48,67 @@ helper shares_email => sub {
 };
 
 helper shares_twitter => sub {
-    # TODO 
+
+    # TODO
     # + Replace this API with our own internal results scraper
     my $self = shift;
     my $url  = shift;
     my $API  = 'http://public.newsharecounts.com/count.json?url=';
     my $results;
-    my $tx = $ua->get($API . $url);
-    if (my $res = $tx->success) { 
+    my $tx = $ua->get( $API . $url );
+    if ( my $res = $tx->success ) {
         $results = $res->json;
-    } else {
-      my $err = $tx->error;
-      $results->{'error_code'} = $err->{'code'};
-      $results->{'error_message'} = $err->{'message'};
+    }
+    else {
+        my $err = $tx->error;
+        $results->{'error_code'}    = $err->{'code'};
+        $results->{'error_message'} = $err->{'message'};
     }
     return $results;
 };
 
 helper get_facebook_token => sub {
-    #TODO 
+
+    #TODO
     # + Cache this response
     # + Return cache if fresh
     # + If not, queue a job to re-validate
     my $APP_ID = $config->{'fb_app_id'};
     my $SECRET = $config->{'fb_app_secret'};
-    my $API  = 'https://graph.facebook.com/v2.1';
-    my $OAUTH = "/oauth/access_token?client_id=$APP_ID&client_secret=$SECRET&grant_type=client_credentials";
+    my $API    = 'https://graph.facebook.com/v2.1';
+    my $OAUTH
+        = "/oauth/access_token?client_id=$APP_ID&client_secret=$SECRET&grant_type=client_credentials";
     my $results;
-    my $tx = $ua->get($API . $OAUTH);
-    if (my $res = $tx->success) { 
+    my $tx = $ua->get( $API . $OAUTH );
+    if ( my $res = $tx->success ) {
         $results = $res->body;
-    } else {
-      my $err = $tx->error;
-      $results->{'error_code'} = $err->{'code'};
-      $results->{'error_message'} = $err->{'message'};
+    }
+    else {
+        my $err = $tx->error;
+        $results->{'error_code'}    = $err->{'code'};
+        $results->{'error_message'} = $err->{'message'};
     }
     return $results;
 };
 
 helper shares_facebook => sub {
+
     # TODO
     # + Cache this response too
-    my $self = shift;
-    my $url  = shift;
-    my $API  = 'https://graph.facebook.com/v2.1';
+    my $self  = shift;
+    my $url   = shift;
+    my $API   = 'https://graph.facebook.com/v2.1';
     my $token = $self->get_facebook_token;
     my $results;
-    my $tx = $ua->get($API . '/?id=' . $url . '&' . $token);
-    if (my $res = $tx->success) { 
+    my $tx = $ua->get( $API . '/?id=' . $url . '&' . $token );
+    if ( my $res = $tx->success ) {
         $results = $res->json;
-    } else {
-      my $err = $tx->error;
-      $results->{'error_code'} = $err->{'code'};
-      $results->{'error_message'} = $err->{'message'};
-      $results->{'token'} = $token;
+    }
+    else {
+        my $err = $tx->error;
+        $results->{'error_code'}    = $err->{'code'};
+        $results->{'error_message'} = $err->{'message'};
+        $results->{'token'}         = $token;
     }
     return $results;
 };
@@ -111,141 +118,144 @@ get '/' => sub {
     $self->render( 'index' );
 };
 
-
 #-------------------------------------------------------------------------------
 #  Endpoints for returning share-related information
 #-------------------------------------------------------------------------------
 group {
     under '/shares/';
-        get '/email' => sub { # /shares/email/?limit=X&days=Y
-            my $self  = shift;
-            my $limit = $self->param( 'limit' ) || 10;
-            my $days  = $self->param( 'days' ) || 7;
+    get '/email' => sub {    # /shares/email/?limit=X&days=Y
+        my $self  = shift;
+        my $limit = $self->param( 'limit' ) || 10;
+        my $days  = $self->param( 'days' ) || 7;
 
-            # Only select records from the last X days (default: 7)
-            my $today = DateTime->now( time_zone => 'America/Los_Angeles' );
-            my $end   = DateTime->now( time_zone => 'America/Los_Angeles' )
-                ->subtract( days => $days );
-            my $dtf = $self->schema->storage->datetime_parser;
-            my $rs  = $self->search_records(
-                'Event',
-                {   timestamp => {
-                        '<=', $dtf->format_datetime( $today ),
-                        '>=', $dtf->format_datetime( $end )
-                    },
-                }
-            );
-            my $count = $rs->count;
-            my @urls  = $rs->search(
-                undef,
-                {   select   => [ 'url', { count => 'url' }, 'title' ],
-                    as       => [qw/ url count title /],
-                    group_by => [qw/ url title /],
-                    order_by => [ { -desc => 'count' }, { -asc => 'title' } ],
-                    rows     => $limit,
-                    result_class => 'DBIx::Class::ResultClass::HashRefInflator',
-                }
-            );
+        # Only select records from the last X days (default: 7)
+        my $today = DateTime->now( time_zone => 'America/Los_Angeles' );
+        my $end   = DateTime->now( time_zone => 'America/Los_Angeles' )
+            ->subtract( days => $days );
+        my $dtf = $self->schema->storage->datetime_parser;
+        my $rs  = $self->search_records(
+            'Event',
+            {   timestamp => {
+                    '<=', $dtf->format_datetime( $today ),
+                    '>=', $dtf->format_datetime( $end )
+                },
+            }
+        );
+        my $count = $rs->count;
+        my @urls  = $rs->search(
+            undef,
+            {   select => [ 'url', { count => 'url' }, 'title' ],
+                as           => [qw/ url count title /],
+                group_by     => [qw/ url title /],
+                order_by     => [ { -desc => 'count' }, { -asc => 'title' } ],
+                rows         => $limit,
+                result_class => 'DBIx::Class::ResultClass::HashRefInflator',
+            }
+        );
 
-            my @encoded;
-            my $tx;
-            # Ridiculous Bryan hack to decode the utf-8 characters from the db
-            foreach my $url (@urls) {                 
-                  my %newhash;
-                 foreach my $key (keys %$url) {
-                   $newhash{$key} = decode("utf-8", ($url->{$key}) );
-                  # $newhash{$key}  = $url->{$key};
-                 }
-                    push (@encoded, \%newhash );
-                }
-            my $result = { urls => \@encoded, };            
-            $self->stash( result => $result, );
-            $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
-            $self->respond_to(
-                json => sub     { $self->render_jsonp( { result => $result } ); },
-                html => { template => 'dump' },
-                any  => { text     => '',                 status   => 204 }
-            );
-        };
+        my @encoded;
+        my $tx;
+
+        # Ridiculous Bryan hack to decode the utf-8 characters from the db
+        foreach my $url ( @urls ) {
+            my %newhash;
+            foreach my $key ( keys %$url ) {
+                $newhash{$key} = decode( "utf-8", ( $url->{$key} ) );
+
+                # $newhash{$key}  = $url->{$key};
+            }
+            push( @encoded, \%newhash );
+        }
+        my $result = { urls => \@encoded, };
+        $self->stash( result => $result, );
+        $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
+        $self->respond_to(
+            json => sub { $self->render_jsonp( { result => $result } ); },
+            html => { template => 'dump' },
+            any  => { text     => '', status => 204 }
+        );
+    };
     under '/shares/url' => sub {
-            my $self = shift;
-            my $url  = $self->param( 'url' );
-            # Make sure that all URL requests are legit
-            return 1 if $url =~ m!^http://thetyee\.ca|^http://preview\.thetyee\.ca!;
-            $self->stash( result => 'not permitted', );
-            $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
-            $self->respond_to(
-                json => { json => { message => 'not permitted' }, status => 401 },
-                html => { template => 'dump' },
-                any  => { text     => '',                 status   => 204 }
-            );
-            return undef;
-        };
-        get '/all/' => sub { # /shares/url/all?=url=http://...
-            my $self = shift;
-            my $url  = $self->param( 'url' );
-            my $fb = $self->shares_facebook($url);
-            my $tw = $self->shares_twitter($url);
-            my $em = $self->shares_email($url);
-            my $fb_shares = $fb->{'share'}{'share_count'};
-            my $tw_shares = $tw->{'count'};
-            my $em_shares = $em->{'shares'};
-            my $total = $fb_shares + $tw_shares + $em_shares;
-            my $result = {
-                facebook => $fb,
-                twitter  => $tw,
-                email    => $em,
-                total    => $total
-            };
-            $self->stash( result => $result, );
-            $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
-            $self->respond_to(
-                json => sub        { $self->render_jsonp( { result => $result } ); },
-                html => { template => 'dump' },
-                any  => { text     => '',                 status   => 204 }
-            );
-        };
+        my $self = shift;
+        my $url  = $self->param( 'url' );
 
-        get '/email' => sub { # /shares/url/email?url=http://...
-            my $self = shift;
-            my $url  = $self->param( 'url' );
-            my $result = $self->shares_email($url);
-            $self->stash( result => $result, );
-            $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
-            $self->respond_to(
-                json => sub        { $self->render_jsonp( { result => $result } ); },
-                html => { template => 'dump' },
-                any  => { text     => '',                 status   => 204 }
-            );
+        # Make sure that all URL requests are legit
+        return 1
+            if $url =~ m!^http://thetyee\.ca|^http://preview\.thetyee\.ca!;
+        $self->stash( result => 'not permitted', );
+        $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
+        $self->respond_to(
+            json => { json => { message => 'not permitted' }, status => 401 },
+            html => { template => 'dump' },
+            any  => { text     => '', status => 204 }
+        );
+        return undef;
+    };
+    get '/all/' => sub {    # /shares/url/all?=url=http://...
+        my $self      = shift;
+        my $url       = $self->param( 'url' );
+        my $fb        = $self->shares_facebook( $url );
+        my $tw        = $self->shares_twitter( $url );
+        my $em        = $self->shares_email( $url );
+        my $fb_shares = $fb->{'share'}{'share_count'};
+        my $tw_shares = $tw->{'count'};
+        my $em_shares = $em->{'shares'};
+        my $total     = $fb_shares + $tw_shares + $em_shares;
+        my $result    = {
+            facebook => $fb,
+            twitter  => $tw,
+            email    => $em,
+            total    => $total
         };
+        $self->stash( result => $result, );
+        $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
+        $self->respond_to(
+            json => sub { $self->render_jsonp( { result => $result } ); },
+            html => { template => 'dump' },
+            any  => { text     => '', status => 204 }
+        );
+    };
 
-        get '/twitter' => sub { # /shares/url/twitter?url=http://...
-            my $self = shift;
-            my $url  = $self->param( 'url' );
-            my $result = $self->shares_twitter($url);
-            $self->stash( result => $result, );
-            $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
-            $self->respond_to(
-                json => sub        { $self->render_jsonp( { result => $result } ); },
-                html => { template => 'dump' },
-                any  => { text     => '',                 status   => 204 }
-            );
-        };
+    get '/email' => sub {    # /shares/url/email?url=http://...
+        my $self   = shift;
+        my $url    = $self->param( 'url' );
+        my $result = $self->shares_email( $url );
+        $self->stash( result => $result, );
+        $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
+        $self->respond_to(
+            json => sub { $self->render_jsonp( { result => $result } ); },
+            html => { template => 'dump' },
+            any  => { text     => '', status => 204 }
+        );
+    };
 
-        get '/facebook' => sub { # /shares/url/facebook?url=http://...
-            my $self = shift;
-            my $url  = $self->param( 'url' );
-            my $result = $self->shares_facebook($url);
-            $self->stash( result => $result, );
-            $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
-            $self->respond_to(
-                json => sub        { $self->render_jsonp( { result => $result } ); },
-                html => { template => 'dump' },
-                any  => { text     => '',                 status   => 204 }
-            );
-        };
+    get '/twitter' => sub {    # /shares/url/twitter?url=http://...
+        my $self   = shift;
+        my $url    = $self->param( 'url' );
+        my $result = $self->shares_twitter( $url );
+        $self->stash( result => $result, );
+        $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
+        $self->respond_to(
+            json => sub { $self->render_jsonp( { result => $result } ); },
+            html => { template => 'dump' },
+            any  => { text     => '', status => 204 }
+        );
+    };
 
-}; # End group.
+    get '/facebook' => sub {    # /shares/url/facebook?url=http://...
+        my $self   = shift;
+        my $url    = $self->param( 'url' );
+        my $result = $self->shares_facebook( $url );
+        $self->stash( result => $result, );
+        $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
+        $self->respond_to(
+            json => sub { $self->render_jsonp( { result => $result } ); },
+            html => { template => 'dump' },
+            any  => { text     => '', status => 204 }
+        );
+    };
+
+};    # End group.
 
 # Provide a data structure for displaying an updated builder list
 get '/builderlist' => sub {
@@ -280,26 +290,42 @@ get '/builderlist' => sub {
         }
 
         # Only non-anon contribs
-        next
-            unless ( $trans->pref_anonymous
-            && $trans->pref_anonymous eq 'Yes' );
+        #next
+        #unless ( $trans->pref_anonymous
+        #&& $trans->pref_anonymous eq 'Yes' );
         my $first;
         my $last;
-        if ( $trans->on_behalf_of ) {
-            $first
-                = 'In '
-                . $trans->on_behalf_of . ' of '
-                . $trans->on_behalf_of_name_first;
-            $last = $trans->on_behalf_of_name_last;
+        if ( $trans->on_behalf_of ) { # People who gave on behalf of another
+            if ( $trans->pref_anonymous && $trans->pref_anonymous eq 'Yes' ) { # If anon
+                $first
+                    = 'In '
+                    . $trans->on_behalf_of . ' of '
+                    . $trans->on_behalf_of_name_first;
+                $last = $trans->on_behalf_of_name_last;
+            }
+            else { # If not anon
+                $first = $trans->first_name;
+                $last
+                    = $trans->last_name . ' (In '
+                    . $trans->on_behalf_of . ' of '
+                    . $trans->on_behalf_of_name_first . ' '
+                    . $trans->on_behalf_of_name_last . ')';
+            }
         }
         else {
             $first = $trans->first_name;
             $last  = $trans->last_name;
         }
-
+        if ( $trans->pref_anonymous && $trans->pref_anonymous eq 'Yes' && !$trans->on_behalf_of ) { # If anon
+            $first = '';
+            $last  = '';
+        }
         my $n = $first . ' ' . $last;
         next if $n =~ /\d+/;    # No card numbers for names please
+        say Dumper( $n );
+        next if $n =~ /^\s+$/;     # No anonymous
 
+        # Otherwise, add to the contributors list
         my $contrib = {
             first_name => $first,
             last_name  => $last,
@@ -308,7 +334,7 @@ get '/builderlist' => sub {
     }
 
     @contributors
-        = sort { $a->{'last_name'} cmp $b->{'last_name'} } @contributors;
+        = sort { lc($a->{'last_name'}) cmp lc($b->{'last_name'}) } @contributors;
     my $result = {
         builderlist => \@contributors,
         count       => $count,
