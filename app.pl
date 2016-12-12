@@ -181,7 +181,7 @@ group {
 
         # Make sure that all URL requests are legit
         return 1
-            if $url =~ m!^http://thetyee\.ca|^http://preview\.thetyee\.ca!;
+            if $url =~ m!^http://thetyee\.ca|^http://preview\.thetyee\.ca|^https://thetyee\.ca|^https://preview\.thetyee\.ca!;
         $self->stash( result => 'not permitted', );
         $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
         $self->respond_to(
