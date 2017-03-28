@@ -75,21 +75,26 @@ helper get_facebook_token => sub {
     # + If not, queue a job to re-validate
     my $APP_ID = $config->{'fb_app_id'};
     my $SECRET = $config->{'fb_app_secret'};
-    my $API    = 'https://graph.facebook.com/v2.1';
+    my $API    = 'https://graph.facebook.com/v2.3';
     my $OAUTH
         = "/oauth/access_token?client_id=$APP_ID&client_secret=$SECRET&grant_type=client_credentials";
     my $results;
     my $tx = $ua->get( $API . $OAUTH );
-    if ( my $res = $tx->success ) {
-        $results = $res->body;
+   if ( my $res = $tx->success ) {
+        app->log->debug ("token was successful");
+        $results = $res->json;
+        app->log->debug("json: " . $results);
     }
     else {
         my $err = $tx->error;
         $results->{'error_code'}    = $err->{'code'};
         $results->{'error_message'} = $err->{'message'};
     }
-    return $results;
+
+
+    return $results->{"access_token"};
 };
+
 
 helper shares_facebook => sub {
 
@@ -97,10 +102,11 @@ helper shares_facebook => sub {
     # + Cache this response too
     my $self  = shift;
     my $url   = shift;
-    my $API   = 'https://graph.facebook.com/v2.1';
+    my $API   = 'https://graph.facebook.com/v2.8';
     my $token = $self->get_facebook_token;
+    app->log->error("got token: " . $token);
     my $results;
-    my $tx = $ua->get( $API . '/?id=' . $url . '&' . $token );
+    my $tx = $ua->get( $API . '/?id=' . $url . '&access_token=' . $token );
     if ( my $res = $tx->success ) {
         $results = $res->json;
     }
@@ -109,6 +115,8 @@ helper shares_facebook => sub {
         $results->{'error_code'}    = $err->{'code'};
         $results->{'error_message'} = $err->{'message'};
         $results->{'token'}         = $token;
+        $results->{'url'}         = $url;
+        
     }
     return $results;
 };
