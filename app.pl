@@ -75,7 +75,7 @@ helper get_facebook_token => sub {
     # + If not, queue a job to re-validate
     my $APP_ID = $config->{'fb_app_id'};
     my $SECRET = $config->{'fb_app_secret'};
-    my $API    = 'https://graph.facebook.com/v2.3';
+    my $API    = 'https://graph.facebook.com/v2.8';
     my $OAUTH
         = "/oauth/access_token?client_id=$APP_ID&client_secret=$SECRET&grant_type=client_credentials";
     my $results;
@@ -109,6 +109,9 @@ helper shares_facebook => sub {
     my $tx = $ua->get( $API . '/?id=' . $url . '&access_token=' . $token );
     if ( my $res = $tx->success ) {
         $results = $res->json;
+        app->log->debug ("fb shares return : \n" . Dumper ($results) .  "\n");
+        app->log->debug ($API . '/?id=' . $url . '&access_token=' . $token .  "\n");
+
     }
     else {
         my $err = $tx->error;
@@ -116,7 +119,7 @@ helper shares_facebook => sub {
         $results->{'error_message'} = $err->{'message'};
         $results->{'token'}         = $token;
         $results->{'url'}         = $url;
-        
+        $results->{'dump'}      = Dumper ($results);
     }
     return $results;
 };
@@ -202,6 +205,7 @@ group {
     get '/all/' => sub {    # /shares/url/all?=url=http://...
         my $self      = shift;
         my $url       = $self->param( 'url' );
+                app->log->debug ("all shares url : $url \n");
         my $fb        = $self->shares_facebook( $url );
         my $tw        = $self->shares_twitter( $url );
         my $em        = $self->shares_email( $url );
