@@ -384,6 +384,8 @@ get '/progress' => sub {
     my $duration = $dt_end->subtract_datetime( $today );
     my ( $days, $hours, $minutes )
         = $duration->in_units( 'days', 'hours', 'minutes' );
+#        // overwriting day calculation above to remove months//
+        $days = $dt_end->delta_days($today)->in_units('days');
     my $dtf = $self->schema->storage->datetime_parser;
 
     # Transactions and calculations
@@ -520,6 +522,7 @@ get '/progress' => sub {
         date_end_formatted => $dt_end->month_name . ' '
             . $dt_end->day . ', '
             . $dt_end->year,
+    #    duration        => Dumper($duration),
         left_days        => $days,
         left_mins        => $minutes,
         left_hours       => $hours,
@@ -546,6 +549,7 @@ get '/progress' => sub {
         contributors_onetime => \@onetimecontributors,
         votes                => \@votes,
         version              => $config->{'app_version'},
+        today               => $today
     };
     $self->stash( progress => $progress, );
     $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
