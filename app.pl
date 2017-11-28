@@ -272,6 +272,7 @@ group {
 # Provide a data structure for displaying an updated builder list
 get '/builderlist' => sub {
     my $self = shift;
+    my $campaign   = $self->param( 'campaign' );        
 
     # Dates
     my $date_start = $self->param( 'date_start' ) || '2012-01-01';
@@ -283,10 +284,9 @@ get '/builderlist' => sub {
         'Transaction',
         {
             # TODO re-implement with clean data
-            trans_date => { '>' => $dtf->format_datetime( $dt_start ) }
-        }
-    );
-
+                    { trans_date => { '>' => $dtf->format_datetime( $dt_start )},
+         appeal_code => {'=' => $campaign } } } );
+ 
     my $count        = $rs->count;
     my $monthlycount = 0;
 
@@ -363,7 +363,7 @@ get '/builderlist' => sub {
 # Provide a data structure for following progress on fundraising campaigns
 get '/progress' => sub {
     my $self       = shift;
-    my $campaign   = $self->param( 'campaign' );
+    my $campaign   = $self->param( 'campaign' );        
     my $date_start = $self->param( 'date_start' );
     my $date_end   = $self->param( 'date_end' );
     my $goal       = $self->param( 'goal' );
@@ -391,10 +391,12 @@ get '/progress' => sub {
 
 if ($dt_end < $today) { $days = $days * -1};
     my $dtf = $self->schema->storage->datetime_parser;
+     
 
     # Transactions and calculations
     my $rs = $self->search_records( 'Transaction',
-        { trans_date => { '>' => $dtf->format_datetime( $dt_start ) } } );
+        { trans_date => { '>' => $dtf->format_datetime( $dt_start )},
+         appeal_code => {'=' => $campaign } } );
     my $count        = $rs->count;
     my $monthlycount = 0;
     my $onetimecount = 0;
