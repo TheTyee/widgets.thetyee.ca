@@ -284,8 +284,14 @@ get '/builderlist' => sub {
         'Transaction',
         {
             # TODO re-implement with clean data
-                    { trans_date => { '>' => $dtf->format_datetime( $dt_start )},
-         appeal_code => {'=' => $campaign } } } );
+                     trans_date => { '>' => $dtf->format_datetime( $dt_start )},
+			 appeal_code => {'=' => $campaign },
+
+  			   
+} 
+
+);
+
  
     my $count        = $rs->count;
     my $monthlycount = 0;
@@ -395,8 +401,15 @@ if ($dt_end < $today) { $days = $days * -1};
 
     # Transactions and calculations
     my $rs = $self->search_records( 'Transaction',
-        { trans_date => { '>' => $dtf->format_datetime( $dt_start )},
-         appeal_code => {'=' => $campaign } } );
+        { 
+
+	trans_date => { '>' => $dtf->format_datetime( $dt_start )},
+         appeal_code => {'=' => $campaign } 
+} 
+
+);
+
+
     my $count        = $rs->count;
     my $monthlycount = 0;
     my $onetimecount = 0;
