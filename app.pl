@@ -53,9 +53,13 @@ helper shares_twitter => sub {
     # + Replace this API with our own internal results scraper
     my $self = shift;
     my $url  = shift;
-    my $API  = 'http://public.newsharecounts.com/count.json?url=';
+#    $url =~ s/https/http/g;
+
+    my $API  = 'https://counts.twitcount.com/counts.php?url=';
+    
     my $results;
     my $tx = $ua->get( $API . $url );
+        app->log->debug ($API . $url);
     if ( my $res = $tx->success ) {
         $results = $res->json;
     }
@@ -64,6 +68,9 @@ helper shares_twitter => sub {
         $results->{'error_code'}    = $err->{'code'};
         $results->{'error_message'} = $err->{'message'};
     }
+
+     app->log->debug ("twitter shares return : \n" . Dumper ($results) .  "\n");
+
     return $results;
 };
 
@@ -616,3 +623,4 @@ __DATA__
 </head>
 <body><%= content %></body>
 </html>
+
