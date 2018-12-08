@@ -381,6 +381,7 @@ get '/progress' => sub {
     my $date_end   = $self->param( 'date_end' );
     my $goal       = $self->param( 'goal' );
     my $multiplier = $self->param( 'multiplier' ) || 12;
+    my $monthly_number_only = $self->param( 'monthly_number_only' );
 
     # Need some better error checking for required params
     unless ( $date_start && $date_end && $goal ) {
@@ -493,12 +494,21 @@ if ($dt_end < $today) { $days = $days * -1};
 
     }
     @contributors = reverse @contributors;
+    
+     if ($monthly_number_only) {
+        $total = $monthlycount;
+        $monthlytotal = $monthlycount;
+                               };
+    
     my $percentage = $formatter->round( $total / $goal * 100, 0 );
     my $monthlypercentage
         = $formatter->round( $monthlytotal / $goal * 100, 0 );
     my $remaining        = $goal - $total;
     my $monthlyremaining = $goal - $monthlytotal;
 
+    
+    
+    
     # News priorities
     my $priority_map = {
         1 => 'Arts & Culture',
@@ -536,7 +546,7 @@ if ($dt_end < $today) { $days = $days * -1};
 
     # Only the top-three votes
     @votes = @votes[ 0 .. 2 ] if @votes;
-
+   
     # Data structure to return to requests
     my $progress = {
         campaign             => $campaign,
