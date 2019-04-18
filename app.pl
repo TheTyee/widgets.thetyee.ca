@@ -82,7 +82,7 @@ helper get_facebook_token => sub {
     # + If not, queue a job to re-validate
     my $APP_ID = $config->{'fb_app_id'};
     my $SECRET = $config->{'fb_app_secret'};
-    my $API    = 'https://graph.facebook.com/v2.8';
+    my $API    = 'https://graph.facebook.com/v3.2';
     my $OAUTH
         = "/oauth/access_token?client_id=$APP_ID&client_secret=$SECRET&grant_type=client_credentials";
     my $results;
@@ -109,11 +109,11 @@ helper shares_facebook => sub {
     # + Cache this response too
     my $self  = shift;
     my $url   = shift;
-    my $API   = 'https://graph.facebook.com/v2.8';
+    my $API   = 'https://graph.facebook.com/v3.2';
     my $token = $self->get_facebook_token;
     app->log->error("got token: " . $token);
     my $results;
-    my $tx = $ua->get( $API . '/?id=' . $url . '&access_token=' . $token );
+    my $tx = $ua->get( $API . '/?id=' . $url . '&access_token=' . $token . "&fields=engagement" );
     if ( my $res = $tx->success ) {
         $results = $res->json;
         app->log->debug ("fb shares return : \n" . Dumper ($results) .  "\n");
@@ -216,7 +216,7 @@ group {
         my $fb        = $self->shares_facebook( $url );
         my $tw        = $self->shares_twitter( $url );
         my $em        = $self->shares_email( $url );
-        my $fb_shares = $fb->{'share'}{'share_count'};
+        my $fb_shares = $fb->{'engagement'}{'comment_count'} + $fb->{'engagement'}{'reaction_count'} + $fb->{'engagement'}{'share_count'} ;
         my $tw_shares = $tw->{'count'};
         my $em_shares = $em->{'shares'};
         my $total     = $fb_shares + $tw_shares + $em_shares;
