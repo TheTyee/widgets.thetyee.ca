@@ -401,8 +401,8 @@ get '/progress' => sub {
 #        // overwriting day calculation above to remove months//
        
 
- $days = $dt_end->delta_days($today)->in_units('days');
-
+ $days = ($dt_end->delta_days($today)->in_units('days'));
+$days += -1;
 if ($dt_end < $today) { $days = $days * -1};
     my $dtf = $self->schema->storage->datetime_parser;
      
