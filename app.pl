@@ -404,8 +404,7 @@ get '/progress' => sub {
  $days = ($dt_end->delta_days($today)->in_units('days'));
 unless ($days == 0) { $days += -1 } ;
 if ($dt_end < $today) { $days = 0};
-    
-my $dtf = $self->schema->storage->datetime_parser;
+    my $dtf = $self->schema->storage->datetime_parser;
      
 
     # Transactions and calculations
