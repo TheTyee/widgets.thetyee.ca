@@ -102,6 +102,29 @@ helper get_facebook_token => sub {
     return $results->{"access_token"};
 };
 
+helper shares_facebook_sharedcount => sub {
+  my $self  = shift;
+    my $url   = shift;
+    my $API   = 'https://api.sharedcount.com/v2.0/shares';
+ my $results;
+    my $tx = $ua->get( $API . '/?url=' . $url . '&apikey=' . $config->{'sharedcount_api'});
+    if ( my $res = $tx->success ) {
+        $results = $res->json;
+        app->log->debug ("fb shares return : \n" . Dumper ($results) .  "\n");
+        app->log->debug ($API . '/?url=' . $url  . "\n");
+
+    }
+    else {
+        my $err = $tx->error;
+        $results->{'error_code'}    = $err->{'code'};
+        $results->{'error_message'} = $err->{'message'};
+        $results->{'url'}         = $url;
+        $results->{'dump'}      = Dumper ($results);
+    }
+    return $results;
+
+};
+
 
 helper shares_facebook => sub {
 
@@ -213,10 +236,11 @@ group {
         my $self      = shift;
         my $url       = $self->param( 'url' );
                 app->log->debug ("all shares url : $url \n");
-        my $fb        = $self->shares_facebook( $url );
+        my $fb        = $self->shares_facebook_sharedcount( $url );
         my $tw        = $self->shares_twitter( $url );
         my $em        = $self->shares_email( $url );
-        my $fb_shares = $fb->{'engagement'}{'comment_count'} + $fb->{'engagement'}{'reaction_count'} + $fb->{'engagement'}{'share_count'} ;
+#        my $fb_shares = $fb->{'engagement'}{'comment_count'} + $fb->{'engagement'}{'reaction_count'} + $fb->{'engagement'}{'share_count'} ;
+        my $fb_shares = $fb->{'Facebook'}{'total_count'};
         my $tw_shares = $tw->{'count'};
         my $em_shares = $em->{'shares'};
         my $total     = $fb_shares + $tw_shares + $em_shares;
@@ -264,7 +288,7 @@ group {
     get '/facebook' => sub {    # /shares/url/facebook?url=http://...
         my $self   = shift;
         my $url    = $self->param( 'url' );
-        my $result = $self->shares_facebook( $url );
+        my $result = $self->shares_facebook_sharedcount( $url );
         $self->stash( result => $result, );
         $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
         $self->respond_to(
