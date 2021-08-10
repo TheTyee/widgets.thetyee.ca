@@ -159,6 +159,38 @@ get '/' => sub {
     $self->render( 'index' );
 };
 
+
+helper submit_facebook => sub {
+    my $self  = shift;
+    my $url   = shift;
+    my $scrape = shift;
+    my $denylist = shift;
+        my $API   = "https://graph.facebook.com/?id=" .$url . "&scopes=&access_token=" . $config->{'fb_apitoken'}; 
+    my $results;
+    
+  my $json =  {id => $url, scopes =>  $config->{'fb_apiscope'}, access_token => $config->{'fb_apitoken'} };
+  
+  if ($scrape) {$json -> {'scrape'} = 'true'};
+  if ($denylist) { $json -> {'denylist'} = 'true'};
+   
+    my $tx = $ua->post('https://graph.facebook.com/' => json => $json );
+    
+    if ( my $res = $tx->success ) {
+        $results = $res->json;
+        app->log->debug ("fb shares return : \n" . Dumper ($res) .  "\n");
+        app->log->debug ($API . '/?id=' . $url . '&access_token=' . $config->{'fb_apitoken'} .  "\n");
+        app->log->debug ( "res->body = ".  $res->body . "\n");
+    }
+    else {
+        my $err = $tx->error;
+        $results->{'error_code'}    = $err->{'code'};
+        $results->{'error_message'} = $err->{'message'};
+        $results->{'token'}         = $config->{'fb_apitoken'};
+        $results->{'url'}         = $url;
+        $results->{'dump'}      = Dumper ($results);
+    }
+    return $results;
+};
 #-------------------------------------------------------------------------------
 #  Endpoints for returning share-related information
 #-------------------------------------------------------------------------------
@@ -299,6 +331,26 @@ group {
     };
 
 };    # End group.
+
+
+   get '/submit_fb' => sub {    # 
+        my $self   = shift;
+        my $url    = $self->param( 'url' );
+        my $denylist = $self->param( 'denylist');
+        my $scrape = $self->param( 'scrape');
+        
+
+        my $result = $self->submit_facebook($url, $scrape, $denylist);
+                $self->stash( result => $result, );
+                        $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
+        $self->respond_to(
+            json => sub { $self->render_jsonp( { result => $result } ); },
+            html => { template => 'dump' },
+            any  => { text     => '', status => 204 }
+        );
+        
+    };
+
 
 # Provide a data structure for displaying an updated builder list
 get '/builderlist' => sub {
