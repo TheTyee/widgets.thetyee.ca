@@ -69,7 +69,7 @@ helper shares_twitter => sub {
         $results->{'error_message'} = $err->{'message'};
     }
 
-     app->log->debug ("twitter shares return : \n" . Dumper ($results) .  "\n");
+   #  app->log->debug ("twitter shares return : \n" . Dumper ($results) .  "\n");
 
     return $results;
 };
@@ -88,9 +88,9 @@ helper get_facebook_token => sub {
     my $results;
     my $tx = $ua->get( $API . $OAUTH );
    if ( my $res = $tx->success ) {
-        app->log->debug ("token was successful");
+        # app->log->debug ("token was successful");
         $results = $res->json;
-        app->log->debug("json: " . $results);
+        # app->log->debug("json: " . $results);
     }
     else {
         my $err = $tx->error;
@@ -111,7 +111,7 @@ helper shares_facebook_sharedcount => sub {
     if ( my $res = $tx->success ) {
         $results = $res->json;
         app->log->debug ("fb shares return : \n" . Dumper ($results) .  "\n");
-        app->log->debug ($API . '/?url=' . $url  . "\n");
+         app->log->debug ($API . '/?url=' . $url  . "\n");
 
     }
     else {
@@ -134,13 +134,13 @@ helper shares_facebook => sub {
     my $url   = shift;
     my $API   = 'https://graph.facebook.com/v3.2';
     my $token = $self->get_facebook_token;
-    app->log->error("got token: " . $token);
+    # app->log->error("got token: " . $token);
     my $results;
     my $tx = $ua->get( $API . '/?id=' . $url . '&access_token=' . $token . "&fields=engagement" );
     if ( my $res = $tx->success ) {
         $results = $res->json;
-        app->log->debug ("fb shares return : \n" . Dumper ($results) .  "\n");
-        app->log->debug ($API . '/?id=' . $url . '&access_token=' . $token .  "\n");
+       #  app->log->debug ("fb shares return : \n" . Dumper ($results) .  "\n");
+       #  app->log->debug ($API . '/?id=' . $url . '&access_token=' . $token .  "\n");
 
     }
     else {
@@ -235,7 +235,7 @@ group {
     get '/all/' => sub {    # /shares/url/all?=url=http://...
         my $self      = shift;
         my $url       = $self->param( 'url' );
-                app->log->debug ("all shares url : $url \n");
+          #      app->log->debug ("all shares url : $url \n");
         my $fb        = $self->shares_facebook_sharedcount( $url );
         my $tw        = $self->shares_twitter( $url );
         my $em        = $self->shares_email( $url );
