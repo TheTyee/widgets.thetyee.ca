@@ -59,7 +59,7 @@ helper shares_twitter => sub {
     
     my $results;
     my $tx = $ua->get( $API . $url );
-        app->log->debug ($API . $url);
+     #   app->log->debug ($API . $url);
     if ( my $res = $tx->success ) {
         $results = $res->json;
     }
@@ -110,8 +110,8 @@ helper shares_facebook_sharedcount => sub {
     my $tx = $ua->get( $API . '/?url=' . $url . '&apikey=' . $config->{'sharedcount_api'});
     if ( my $res = $tx->success ) {
         $results = $res->json;
-        app->log->debug ("fb shares return : \n" . Dumper ($results) .  "\n");
-         app->log->debug ($API . '/?url=' . $url  . "\n");
+   #     app->log->debug ("fb shares return : \n" . Dumper ($results) .  "\n");
+   #      app->log->debug ($API . '/?url=' . $url  . "\n");
 
     }
     else {
@@ -165,6 +165,7 @@ helper submit_facebook => sub {
     my $url   = shift;
     my $scrape = shift;
     my $denylist = shift;
+    my $fields = shift;
         my $API   = "https://graph.facebook.com/?id=" .$url . "&scopes=&access_token=" . $config->{'fb_apitoken'}; 
     my $results;
     
@@ -172,13 +173,17 @@ helper submit_facebook => sub {
   
   if ($scrape) {$json -> {'scrape'} = 'true'};
   if ($denylist) { $json -> {'denylist'} = 'true'};
+  if ($fields) { $json -> {'fields'} = 'scopes'; delete  $json -> {'scopes'};}
+               
+   app->log->debug ("json being sent:" . Dumper ($json) .  "\n");
+
    
     my $tx = $ua->post('https://graph.facebook.com/' => json => $json );
     
     if ( my $res = $tx->success ) {
         $results = $res->json;
-        app->log->debug ("fb shares return : \n" . Dumper ($res) .  "\n");
-        app->log->debug ($API . '/?id=' . $url . '&access_token=' . $config->{'fb_apitoken'} .  "\n");
+        app->log->debug ("fb submit return : \n" . Dumper ($res) .  "\n");
+        app->log->debug ($API . '/?id=' . $url . '&access_token=' . $config->{'fb_apitoken'} . " Scrape = $scrape denylist = $denylist \n");
         app->log->debug ( "res->body = ".  $res->body . "\n");
     }
     else {
@@ -336,11 +341,11 @@ group {
    get '/submit_fb' => sub {    # 
         my $self   = shift;
         my $url    = $self->param( 'url' );
-        my $denylist = $self->param( 'denylist');
         my $scrape = $self->param( 'scrape');
-        
+        my $denylist = $self->param( 'denylist');
+        my $fields = $self->param( 'fields');
 
-        my $result = $self->submit_facebook($url, $scrape, $denylist);
+        my $result = $self->submit_facebook($url, $scrape, $denylist, $fields);
                 $self->stash( result => $result, );
                         $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
         $self->respond_to(
