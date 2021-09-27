@@ -105,7 +105,7 @@ helper get_facebook_token => sub {
 helper shares_facebook_sharedcount => sub {
   my $self  = shift;
     my $url   = shift;
-    my $API   = 'https://api.sharedcount.com/v2.0/shares';
+    my $API   = 'https://api-v2.sharedcount.com/v2.0/shares';
  my $results;
     my $tx = $ua->get( $API . '/?url=' . $url . '&apikey=' . $config->{'sharedcount_api'});
     if ( my $res = $tx->success ) {
