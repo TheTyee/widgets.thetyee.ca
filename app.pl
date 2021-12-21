@@ -11,6 +11,8 @@ use Number::Format;
 use Widget::Schema;
 use DBIx::Class::ResultClass::HashRefInflator;
 
+
+
 my $config = plugin 'JSONConfig';
 plugin JSONP => callback => 'cb';
 
@@ -20,6 +22,8 @@ my $formatter = new Number::Format(
     -thousands_sep => ',',
     -decimal_point => '.',
 );
+
+my $boost = $config->{'boost'};
 
 helper schema => sub {
     my $schema = Widget::Schema->connect( $config->{'pg_dsn'},
@@ -438,8 +442,8 @@ get '/builderlist' => sub {
         = sort { lc($a->{'last_name'}) cmp lc($b->{'last_name'}) } @contributors;
     my $result = {
         builderlist => \@contributors,
-        count       => $count,
-    };
+        count       => ($count + $boost),
+    }; 
     $self->stash( result => $result, );
     $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
     $self->respond_to(
@@ -494,8 +498,8 @@ if ($dt_end < $today) { $days = 0};
 );
 
 
-    my $count        = $rs->count;
-    my $monthlycount = 0;
+    my $count        = $rs->count + +$boost;
+    my $monthlycount = 0 + $boost;
     my $onetimecount = 0;
 
 # Need to multiply those rows with a value in plan_code by $multiplier months (default 12)
