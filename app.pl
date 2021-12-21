@@ -63,7 +63,7 @@ helper shares_twitter => sub {
     
     my $results;
     my $tx = $ua->get( $API . $url );
-        app->log->debug ($API . $url);
+     #   app->log->debug ($API . $url);
     if ( my $res = $tx->success ) {
         $results = $res->json;
     }
@@ -73,7 +73,7 @@ helper shares_twitter => sub {
         $results->{'error_message'} = $err->{'message'};
     }
 
-     app->log->debug ("twitter shares return : \n" . Dumper ($results) .  "\n");
+   #  app->log->debug ("twitter shares return : \n" . Dumper ($results) .  "\n");
 
     return $results;
 };
@@ -92,9 +92,9 @@ helper get_facebook_token => sub {
     my $results;
     my $tx = $ua->get( $API . $OAUTH );
    if ( my $res = $tx->success ) {
-        app->log->debug ("token was successful");
+        # app->log->debug ("token was successful");
         $results = $res->json;
-        app->log->debug("json: " . $results);
+        # app->log->debug("json: " . $results);
     }
     else {
         my $err = $tx->error;
@@ -114,8 +114,8 @@ helper shares_facebook_sharedcount => sub {
     my $tx = $ua->get( $API . '/?url=' . $url . '&apikey=' . $config->{'sharedcount_api'});
     if ( my $res = $tx->success ) {
         $results = $res->json;
-        app->log->debug ("fb shares return : \n" . Dumper ($results) .  "\n");
-        app->log->debug ($API . '/?url=' . $url  . "\n");
+   #     app->log->debug ("fb shares return : \n" . Dumper ($results) .  "\n");
+   #      app->log->debug ($API . '/?url=' . $url  . "\n");
 
     }
     else {
@@ -138,13 +138,13 @@ helper shares_facebook => sub {
     my $url   = shift;
     my $API   = 'https://graph.facebook.com/v3.2';
     my $token = $self->get_facebook_token;
-    app->log->error("got token: " . $token);
+    # app->log->error("got token: " . $token);
     my $results;
     my $tx = $ua->get( $API . '/?id=' . $url . '&access_token=' . $token . "&fields=engagement" );
     if ( my $res = $tx->success ) {
         $results = $res->json;
-        app->log->debug ("fb shares return : \n" . Dumper ($results) .  "\n");
-        app->log->debug ($API . '/?id=' . $url . '&access_token=' . $token .  "\n");
+       #  app->log->debug ("fb shares return : \n" . Dumper ($results) .  "\n");
+       #  app->log->debug ($API . '/?id=' . $url . '&access_token=' . $token .  "\n");
 
     }
     else {
@@ -169,6 +169,7 @@ helper submit_facebook => sub {
     my $url   = shift;
     my $scrape = shift;
     my $denylist = shift;
+    my $fields = shift;
         my $API   = "https://graph.facebook.com/?id=" .$url . "&scopes=&access_token=" . $config->{'fb_apitoken'}; 
     my $results;
     
@@ -176,13 +177,17 @@ helper submit_facebook => sub {
   
   if ($scrape) {$json -> {'scrape'} = 'true'};
   if ($denylist) { $json -> {'denylist'} = 'true'};
+  if ($fields) { $json -> {'fields'} = 'scopes'; delete  $json -> {'scopes'};}
+               
+   app->log->debug ("json being sent:" . Dumper ($json) .  "\n");
+
    
     my $tx = $ua->post('https://graph.facebook.com/' => json => $json );
     
     if ( my $res = $tx->success ) {
         $results = $res->json;
-        app->log->debug ("fb shares return : \n" . Dumper ($res) .  "\n");
-        app->log->debug ($API . '/?id=' . $url . '&access_token=' . $config->{'fb_apitoken'} .  "\n");
+        app->log->debug ("fb submit return : \n" . Dumper ($res) .  "\n");
+        app->log->debug ($API . '/?id=' . $url . '&access_token=' . $config->{'fb_apitoken'} . " Scrape = $scrape denylist = $denylist \n");
         app->log->debug ( "res->body = ".  $res->body . "\n");
     }
     else {
@@ -271,7 +276,7 @@ group {
     get '/all/' => sub {    # /shares/url/all?=url=http://...
         my $self      = shift;
         my $url       = $self->param( 'url' );
-                app->log->debug ("all shares url : $url \n");
+          #      app->log->debug ("all shares url : $url \n");
         my $fb        = $self->shares_facebook_sharedcount( $url );
         my $tw        = $self->shares_twitter( $url );
         my $em        = $self->shares_email( $url );
@@ -340,11 +345,11 @@ group {
    get '/submit_fb' => sub {    # 
         my $self   = shift;
         my $url    = $self->param( 'url' );
-        my $denylist = $self->param( 'denylist');
         my $scrape = $self->param( 'scrape');
-        
+        my $denylist = $self->param( 'denylist');
+        my $fields = $self->param( 'fields');
 
-        my $result = $self->submit_facebook($url, $scrape, $denylist);
+        my $result = $self->submit_facebook($url, $scrape, $denylist, $fields);
                 $self->stash( result => $result, );
                         $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
         $self->respond_to(
