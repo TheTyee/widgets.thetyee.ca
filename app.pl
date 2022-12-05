@@ -518,7 +518,9 @@ if ($dt_end < $today) { $days = 0};
 
         if (   $trans->plan_code
             && $trans->plan_name ne "cancelled"
-            && $trans->plan_code ne '' )
+            && $trans->plan_code ne ''
+            && $trans->plan_code !~ /annual/
+            )
         {    #update to plan_code later when recurly sync fixed
             $total        += $trans->amount_in_cents / 100 * $multiplier;
             $monthlytotal += $trans->amount_in_cents / 100 * $multiplier;
