@@ -461,6 +461,7 @@ get '/builderlist' => sub {
 # Provide a data structure for following progress on fundraising campaigns
 get '/progress' => sub {
     my $self       = shift;
+    $self->res->headers->header( 'Access-Control-Allow-Origin' => '*' );
     my $campaign   = $self->param( 'campaign' );        
     my $date_start = $self->param( 'date_start' );
     my $date_end   = $self->param( 'date_end' );
