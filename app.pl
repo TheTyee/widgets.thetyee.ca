@@ -24,7 +24,7 @@ my $formatter = new Number::Format(
 );
 
 my $boost = $config->{'boost'};
-
+my  $dollarboost = $config->{'dollarboost'};
 helper schema => sub {
     my $schema = Widget::Schema->connect( $config->{'pg_dsn'},
         $config->{'pg_user'}, $config->{'pg_pass'}, );
@@ -534,7 +534,6 @@ if ($dt_end < $today) { $days = 0};
             $onetimecount++;
         }
 
-	$total += $boost;
 
         # Only non-anon contribs
         next
@@ -584,6 +583,9 @@ if ($dt_end < $today) { $days = 0};
         }
 
     }
+    
+    	$total += $dollarboost;
+
     @contributors = reverse @contributors;
     
      if ($monthly_number_only) {
