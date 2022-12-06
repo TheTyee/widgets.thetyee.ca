@@ -534,6 +534,8 @@ if ($dt_end < $today) { $days = 0};
             $onetimecount++;
         }
 
+	$total += $boost;
+
         # Only non-anon contribs
         next
             unless ( $trans->pref_anonymous
